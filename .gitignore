@@ -1,0 +1,28 @@
+# Build output
+*.obj
+*.exp
+*.lib
+*.dll
+*.pdb
+*.apworld
+__pycache__/
+
+# Downloaded / third-party reference code (not part of the build)
+imgui/
+2BHook/
+scratch_nierhook/
+YoRHa Protocol Launcher/
+
+# Local runtime data, saves and logs
+NieR Save File 100%/
+*.dat
+*.bin
+*.log
+ap_received_state.json
+quest_log.json
+archipelago_collected_nodes.txt
+phase_log.json
+chapter_progress.json
+
+# Release zips (tools/make_release.py)
+release/

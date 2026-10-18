@@ -1,0 +1,23 @@
+# NieR: Automata - Archipelago player settings (pre-beta 0.1)
+# Put this file in your Archipelago "Players" folder (or send it to the host) after editing it.
+
+name: Player1          # Your slot name (max 16 characters). Use the same name in the in-game F1 menu.
+game: NieR Automata
+description: NieR Automata pre-beta settings
+
+NieR Automata:
+  # When your game is done:
+  #   prologue_engels: beat Engels at the end of the prologue (short run, good for testing)
+  #   ending_a: get Ending A (end of route A)
+  #   ending_e: get Ending E (routes A, B, C and D; needs the 9S and A2 items)
+  goal: ending_a
+
+  # Side quests are always checks. 'true' also lets them hold progression items (only quests whose
+  # completion was verified in a real save). Some quests become impossible as the story advances.
+  quest_progression: 'false'
+
+  # When you die, every DeathLink player dies, and the other way around.
+  death_link: 'false'
+
+  progression_balancing: 50
+  accessibility: full
