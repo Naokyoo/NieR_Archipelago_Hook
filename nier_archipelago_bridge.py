@@ -14,6 +14,7 @@ import os
 import math
 import uuid
 import asyncio
+import ssl
 import struct
 import re
 import datetime
@@ -29,6 +30,14 @@ try:
     import websockets
 except ImportError:
     websockets = None
+
+# Verify wss:// certificates with certifi's CA bundle when available: the Windows certificate store
+# can lack the root used by archipelago.gg, which makes the connection fail with CERTIFICATE_VERIFY_FAILED.
+try:
+    import certifi
+    SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    SSL_CONTEXT = ssl.create_default_context()
 
 DEFAULT_LOCAL_HOST = "127.0.0.1"
 DEFAULT_LOCAL_PORT = 52140
@@ -1094,7 +1103,8 @@ class ArchipelagoClient:
         for target_url in urls:
             print(f"\n[*] [Archipelago] Trying connection to {target_url}...")
             try:
-                async with websockets.connect(target_url, ping_interval=20, ping_timeout=20) as ws:
+                ssl_ctx = SSL_CONTEXT if target_url.startswith("wss://") else None
+                async with websockets.connect(target_url, ssl=ssl_ctx, ping_interval=20, ping_timeout=20) as ws:
                     self.ws = ws
                     self.connected = True
                     connected_any = True

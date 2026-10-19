@@ -55,7 +55,7 @@ Download `NieR-Automata-Archipelago-<version>.zip` from the
 1. Start NieR: Automata. A console window titled *Archipelago Hook* opens next to the game: that's normal,
    leave it open.
 2. Double-click `Lancer_Pont_Archipelago.bat` in the game folder. The first time, it installs the
-   `websockets` Python package. Leave this window open while you play.
+   `websockets` and `certifi` Python packages. Leave this window open while you play.
 3. In game, press **F1** (or **Insert**) to open the Archipelago menu. Enter the server (`host:port`), your
    slot name and the password if there is one, then click *SE CONNECTER A ARCHIPELAGO*.
    You can also connect from the bridge window: `ap_connect archipelago.gg:38281 YourName [password]`.

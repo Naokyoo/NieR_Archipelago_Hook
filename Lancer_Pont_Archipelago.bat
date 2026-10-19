@@ -14,10 +14,10 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-"%PY%" -c "import websockets" >nul 2>&1
+"%PY%" -c "import websockets, certifi" >nul 2>&1
 if errorlevel 1 (
-    echo [*] Installing the 'websockets' Python package...
-    "%PY%" -m pip install --user websockets
+    echo [*] Installing the 'websockets' and 'certifi' Python packages...
+    "%PY%" -m pip install --user websockets certifi
 )
 "%PY%" nier_archipelago_bridge.py
 pause
