@@ -19,7 +19,9 @@ fishing, shops…) send items to the other players.
 - [Known issues](#known-issues)
 - [Uninstalling](#uninstalling)
 - [Building from source](#building-from-source)
+- [AI disclosure](#ai-disclosure)
 - [Credits](#credits)
+- [License](#license)
 
 ## What you need
 
@@ -149,8 +151,27 @@ python tools/make_release.py 0.1.0-prebeta
 Report bugs on the [Issues](../../issues) page, or on Discord. Please include `archipelago_events.log`
 (in the game's `data` folder) and the bridge window's output.
 
+## AI disclosure
+
+This project was made with the help of AI, mainly [Claude](https://claude.ai) (Anthropic) through Claude Code.
+To be clear about what that means:
+
+- **Reverse engineering:** AI helped decompile and recompile the game with REA, to find the functions and
+  memory addresses the hook relies on.
+- **Code:** AI helped write and debug parts of the code: the DLL hook, the Python bridge, the apworld
+  and the release tools. Commits made with AI help are marked `Co-Authored-By: Claude`.
+- **Docs:** AI helped write this README.
+
+I tested everything in game and I maintain the project myself: I understand how the code works and I
+handle bug reports and support. No AI-generated art, audio or other game assets are included.
+If you have questions about any part of it, ask on Discord or open an issue.
+
 ## Credits
 
 - Item ids and save layout: [NieREdit](https://codeberg.org/mxNieR/NieREdit), NieRHook
 - Quest names and story phases: [YoRHa Protocol](https://github.com/Vluurie/yp_launcher) (Vluurie)
 - [MinHook](https://github.com/TsudaKageyu/minhook), [Dear ImGui](https://github.com/ocornut/imgui)
+
+## License
+
+[MIT](LICENSE). MinHook and Dear ImGui keep their own licenses.

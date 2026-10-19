@@ -37,6 +37,7 @@ def main():
 
         zf.write(os.path.join(ROOT, "NieR Automata.yaml"), "NieR Automata.yaml")
         zf.write(os.path.join(ROOT, "README.md"), "README.md")
+        zf.write(os.path.join(ROOT, "LICENSE"), "LICENSE")
     print(f"[+] {out}")
 
 
