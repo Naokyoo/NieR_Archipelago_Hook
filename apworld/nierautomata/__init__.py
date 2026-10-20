@@ -21,7 +21,7 @@ class NieRAutomataWeb(WebWorld):
             "English",
             "setup_en.md",
             "setup/en",
-            ["Google DeepMind"]
+            ["Naokyoo"]
         )
     ]
 
