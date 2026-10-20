@@ -5,19 +5,24 @@ echo =========================================================
 echo   NieR: Automata - Archipelago MultiWorld Bridge
 echo =========================================================
 echo.
-set "PY=python"
-if exist "C:\Python314\python.exe" set "PY=C:\Python314\python.exe"
-"%PY%" --version >nul 2>&1
-if errorlevel 1 (
-    echo [-] Python 3 was not found. Install it from https://www.python.org/downloads/
-    echo     and tick "Add python.exe to PATH" during the install.
-    pause
-    exit /b 1
-)
-"%PY%" -c "import websockets, certifi" >nul 2>&1
-if errorlevel 1 (
-    echo [*] Installing the 'websockets' and 'certifi' Python packages...
-    "%PY%" -m pip install --user websockets certifi
+rem The release ships its own Python in the "python" folder. Without it (running from the sources),
+rem use the installed Python and install the packages the bridge needs.
+set "PY=python\python.exe"
+if not exist "%PY%" set "PY=python"
+if "%PY%"=="python" if exist "C:\Python314\python.exe" set "PY=C:\Python314\python.exe"
+if not exist "python\python.exe" (
+    "%PY%" --version >nul 2>&1
+    if errorlevel 1 (
+        echo [-] The "python" folder is missing. Copy everything from the zip's "NieRAutomata folder"
+        echo     into the game folder again.
+        pause
+        exit /b 1
+    )
+    "%PY%" -c "import websockets, certifi" >nul 2>&1
+    if errorlevel 1 (
+        echo [*] Installing the 'websockets' and 'certifi' Python packages...
+        "%PY%" -m pip install --user websockets certifi
+    )
 )
 "%PY%" nier_archipelago_bridge.py
 pause

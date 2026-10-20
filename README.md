@@ -27,8 +27,6 @@ fishing, shops…) send items to the other players.
 
 - **NieR: Automata on Steam**, up to date. Other versions (Game Pass / Microsoft Store) are not supported.
 - **Windows**.
-- **[Python 3](https://www.python.org/downloads/)** (3.10 or newer). During the install, tick
-  *"Add python.exe to PATH"*.
 - **[Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases)** to generate the multiworld
   (only the person who generates needs it).
 - No other mod that installs a `dinput8.dll` in the game folder (they would replace each other).
@@ -44,6 +42,7 @@ Download `NieR-Automata-Archipelago-<version>.zip` from the
    - `dinput8.dll`: the game hook
    - `nier_archipelago_bridge.py`: links the game to the Archipelago server
    - `Lancer_Pont_Archipelago.bat`: starts the bridge
+   - `python`: the Python that runs the bridge, nothing to install
    - `ap_definitions.json`, `known_chests.json`: data used by the bridge
 3. **Install the world** (only the person who generates the multiworld): double-click
    `nierautomata.apworld`, or copy it into Archipelago's `custom_worlds` folder.
@@ -54,8 +53,7 @@ Download `NieR-Automata-Archipelago-<version>.zip` from the
 
 1. Start NieR: Automata. A console window titled *Archipelago Hook* opens next to the game: that's normal,
    leave it open.
-2. Double-click `Lancer_Pont_Archipelago.bat` in the game folder. The first time, it installs the
-   `websockets` and `certifi` Python packages. Leave this window open while you play.
+2. Double-click `Lancer_Pont_Archipelago.bat` in the game folder. Leave this window open while you play.
 3. In game, press **F1** (or **Insert**) to open the Archipelago menu. Enter the server (`host:port`), your
    slot name and the password if there is one, then click *SE CONNECTER A ARCHIPELAGO*.
    You can also connect from the bridge window: `ap_connect archipelago.gg:38281 YourName [password]`.
@@ -127,7 +125,9 @@ files can be deleted too.
 
 ## Building from source
 
-Requirements: Visual Studio with the C++ build tools, Python 3.
+Requirements: Visual Studio with the C++ build tools, Python 3. When run from the sources,
+`Lancer_Pont_Archipelago.bat` uses your installed Python and installs `websockets` and `certifi`.
+`tools/make_release.py` downloads the embeddable Python from python.org and bundles it in the zip.
 
 ```
 git clone --recursive <repo url>      (or: git submodule update --init)
