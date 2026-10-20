@@ -40,6 +40,21 @@ class NieRAutomataWorld(World):
 
     base_id = AP_BASE_ID
 
+    # Universal Tracker can rebuild this world from the slot data alone (no YAML needed), see generate_early
+    ut_can_gen_without_yaml = True
+
+    def generate_early(self) -> None:
+        # Inside Universal Tracker: take the options from the slot data of the real generation
+        re_gen_passthrough = getattr(self.multiworld, "re_gen_passthrough", {})
+        if self.game in re_gen_passthrough:
+            slot_data = re_gen_passthrough[self.game]
+            # Seeds made with 0.1.0 only have goal and death_link, at the top level
+            options = slot_data.get("options", {k: slot_data[k] for k in ("goal", "death_link") if k in slot_data})
+            for name, value in options.items():
+                option = getattr(self.options, name, None)
+                if option is not None:
+                    setattr(self.options, name, option.from_any(value))
+
     def create_item(self, name: str) -> NieRItem:
         item_data = item_table[name]
         return NieRItem(name, item_data.classification, item_data.code, self.player)
@@ -86,5 +101,7 @@ class NieRAutomataWorld(World):
         return {
             "goal": self.options.goal.value,
             "death_link": self.options.death_link.value,
+            # Every option, for Universal Tracker
+            "options": self.options.as_dict("goal", "quest_progression", "death_link"),
             "version": "0.1.0"
         }

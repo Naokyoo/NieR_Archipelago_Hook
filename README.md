@@ -44,7 +44,8 @@ Download `NieR-Automata-Archipelago-<version>.zip` from the
    - `Lancer_Pont_Archipelago.bat`: starts the bridge
    - `python`: the Python that runs the bridge, nothing to install
    - `ap_definitions.json`, `known_chests.json`: data used by the bridge
-3. **Install the world** (only the person who generates the multiworld): double-click
+3. **Install the world** (the person who generates the multiworld, and anyone using the
+   [tracker](#tracker-optional)): double-click
    `nierautomata.apworld`, or copy it into Archipelago's `custom_worlds` folder.
 4. **Make your settings file**: edit `NieR Automata.yaml` (your slot name, your goal…) and give it to
    the person who generates the multiworld, like any other Archipelago game.
@@ -66,6 +67,15 @@ Download `NieR-Automata-Archipelago-<version>.zip` from the
 
 Keep the bridge running while you play. If the Archipelago server can't be reached, your progress is
 kept and the checks are sent when you reconnect.
+
+### Tracker (optional)
+
+To see which checks are in logic, use [Universal Tracker](https://github.com/FarisTheAncient/Archipelago/releases):
+
+1. Install `tracker.apworld` (from the Universal Tracker releases) and `nierautomata.apworld`
+   (from this mod's zip) in Archipelago: double-click each file.
+2. In the Archipelago Launcher, open *Universal Tracker* and connect with the same server and slot name
+   as in game. No YAML needed.
 
 ## How the randomizer works
 
