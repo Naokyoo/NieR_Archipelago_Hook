@@ -103,5 +103,5 @@ class NieRAutomataWorld(World):
             "death_link": self.options.death_link.value,
             # Every option, for Universal Tracker
             "options": self.options.as_dict("goal", "quest_progression", "death_link"),
-            "version": "0.1.0"
+            "version": "0.1.1"
         }

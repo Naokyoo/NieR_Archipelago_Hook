@@ -2,7 +2,7 @@
 
 An [Archipelago](https://archipelago.gg) multiworld randomizer for **NieR: Automata** (Steam version, Windows).
 
-> **Pre-beta (0.1.0).** It works from start to Ending A in our tests, but expect bugs. Back up your saves
+> **Pre-beta (0.1.1).** It works from start to Ending A in our tests, but expect bugs. Back up your saves
 > and please report anything odd (see [Feedback](#feedback)).
 
 2B starts with no weapons and no HUD chips. Weapons, pod programs, HUD chips, chip storage, characters and
