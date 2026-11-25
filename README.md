@@ -5,7 +5,7 @@ An [Archipelago](https://archipelago.gg) multiworld randomizer for **NieR: Autom
 > **Pre-beta (0.2.0).** It works from start to Ending A in our tests, but expect bugs. Back up your saves
 > and please report anything odd (see [Feedback](#feedback)).
 >
-> **NieR: Automata got a Steam update in November 2026: version 0.1.0 crashes the game with it.** Update to
+> **NieR: Automata got a Steam update in November 2026: versions 0.1.x crash the game with it.** Update to
 > 0.2.0 (see [Updating](#updating)).
 
 2B starts with no weapons and no HUD chips. Weapons, pod programs, HUD chips, chip storage, characters and
@@ -23,7 +23,9 @@ fishing, shops…) send items to the other players.
 - [Known issues](#known-issues)
 - [Uninstalling](#uninstalling)
 - [Building from source](#building-from-source)
+- [AI disclosure](#ai-disclosure)
 - [Credits](#credits)
+- [License](#license)
 
 ## What you need
 
@@ -31,8 +33,6 @@ fishing, shops…) send items to the other players.
   (Game Pass / Microsoft Store, or a future Steam update) are not: the hook then shows a warning and stays off
   instead of crashing the game.
 - **Windows**.
-- **[Python 3](https://www.python.org/downloads/)** (3.10 or newer). During the install, tick
-  *"Add python.exe to PATH"*.
 - **[Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases)** to generate the multiworld
   (only the person who generates needs it).
 - No other mod that installs a `dinput8.dll` in the game folder (they would replace each other).
@@ -48,15 +48,17 @@ Download `NieR-Automata-Archipelago-<version>.zip` from the
    - `dinput8.dll`: the game hook
    - `nier_archipelago_bridge.py`: links the game to the Archipelago server
    - `Lancer_Pont_Archipelago.bat`: starts the bridge
+   - `python`: the Python that runs the bridge, nothing to install
    - `ap_definitions.json`, `known_chests.json`: data used by the bridge
-3. **Install the world** (only the person who generates the multiworld): double-click
+3. **Install the world** (the person who generates the multiworld, and anyone using the
+   [tracker](#tracker-optional)): double-click
    `nierautomata.apworld`, or copy it into Archipelago's `custom_worlds` folder.
 4. **Make your settings file**: edit `NieR Automata.yaml` (your slot name, your goal…) and give it to
    the person who generates the multiworld, like any other Archipelago game.
 
 ## Updating
 
-From 0.1.0 (required since the game's Steam update of November 2026):
+From 0.1.0 or 0.1.1 (required since the game's Steam update of November 2026):
 
 1. Close the game and the bridge window.
 2. Copy everything from the new zip's `NieRAutomata folder` into the game folder and **replace** the old files
@@ -75,8 +77,7 @@ update the hook doesn't know yet, it shows a warning and stays off instead of cr
 
 1. Start NieR: Automata. A console window titled *Archipelago Hook* opens next to the game: that's normal,
    leave it open.
-2. Double-click `Lancer_Pont_Archipelago.bat` in the game folder. The first time, it installs the
-   `websockets` Python package. Leave this window open while you play.
+2. Double-click `Lancer_Pont_Archipelago.bat` in the game folder. Leave this window open while you play.
 3. In game, press **F1** (or **Insert**) to open the Archipelago menu. Enter the server (`host:port`), your
    slot name and the password if there is one, then click *SE CONNECTER A ARCHIPELAGO*.
    You can also connect from the bridge window: `ap_connect archipelago.gg:38281 YourName [password]`.
@@ -93,6 +94,15 @@ update the hook doesn't know yet, it shows a warning and stays off instead of cr
 
 Keep the bridge running while you play. If the Archipelago server can't be reached, your progress is
 kept and the checks are sent when you reconnect.
+
+### Tracker (optional)
+
+To see which checks are in logic, use [Universal Tracker](https://github.com/FarisTheAncient/Archipelago/releases):
+
+1. Install `tracker.apworld` (from the Universal Tracker releases) and `nierautomata.apworld`
+   (from this mod's zip) in Archipelago: double-click each file.
+2. In the Archipelago Launcher, open *Universal Tracker* and connect with the same server and slot name
+   as in game. No YAML needed.
 
 ## How the randomizer works
 
@@ -176,7 +186,9 @@ files can be deleted too.
 
 ## Building from source
 
-Requirements: Visual Studio with the C++ build tools, Python 3.
+Requirements: Visual Studio with the C++ build tools, Python 3. When run from the sources,
+`Lancer_Pont_Archipelago.bat` uses your installed Python and installs `websockets` and `certifi`.
+`tools/make_release.py` downloads the embeddable Python from python.org and bundles it in the zip.
 
 ```
 git clone --recursive <repo url>      (or: git submodule update --init)
@@ -204,8 +216,27 @@ the new build (`tools/port_verify.py` checks the small functions and return addr
 Report bugs on the [Issues](../../issues) page, or on Discord. Please include `archipelago_events.log`
 (in the game's `data` folder) and the bridge window's output.
 
+## AI disclosure
+
+This project was made with the help of AI, mainly [Claude](https://claude.ai) (Anthropic) through Claude Code.
+To be clear about what that means:
+
+- **Reverse engineering:** AI helped decompile and recompile the game with REA, to find the functions and
+  memory addresses the hook relies on.
+- **Code:** AI helped write and debug parts of the code: the DLL hook, the Python bridge, the apworld
+  and the release tools. Commits made with AI help are marked `Co-Authored-By: Claude`.
+- **Docs:** AI helped write this README.
+
+I tested everything in game and I maintain the project myself: I understand how the code works and I
+handle bug reports and support. No AI-generated art, audio or other game assets are included.
+If you have questions about any part of it, ask on Discord or open an issue.
+
 ## Credits
 
 - Item ids and save layout: [NieREdit](https://codeberg.org/mxNieR/NieREdit), NieRHook
 - Quest names and story phases: [YoRHa Protocol](https://github.com/Vluurie/yp_launcher) (Vluurie)
 - [MinHook](https://github.com/TsudaKageyu/minhook), [Dear ImGui](https://github.com/ocornut/imgui)
+
+## License
+
+[MIT](LICENSE). MinHook and Dear ImGui keep their own licenses.

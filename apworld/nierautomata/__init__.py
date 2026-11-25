@@ -31,7 +31,7 @@ class NieRAutomataWeb(WebWorld):
             "English",
             "setup_en.md",
             "setup/en",
-            ["Google DeepMind"]
+            ["Naokyoo"]
         )
     ]
 
@@ -50,19 +50,39 @@ class NieRAutomataWorld(World):
 
     base_id = AP_BASE_ID
 
-    def create_item(self, name: str) -> NieRItem:
-        item_data = item_table[name]
-        return NieRItem(name, item_data.classification, item_data.code, self.player)
+    # Universal Tracker can rebuild this world from the slot data alone (no YAML needed), see generate_early
+    ut_can_gen_without_yaml = True
 
     def generate_early(self) -> None:
+        # Inside Universal Tracker: take the options from the slot data of the real generation
+        re_gen_passthrough = getattr(self.multiworld, "re_gen_passthrough", {})
+        slot_data = re_gen_passthrough.get(self.game)
+        if slot_data is not None:
+            # Seeds made with 0.1.0 only have goal and death_link, at the top level
+            options = slot_data.get("options", {k: slot_data[k] for k in ("goal", "death_link") if k in slot_data})
+            for name, value in options.items():
+                option = getattr(self.options, name, None)
+                if option is not None:
+                    setattr(self.options, name, option.from_any(value))
+
         if self.options.chapter_shuffle and self.options.goal.value not in CHAPTER_SHUFFLE_GOALS:
             logging.warning(f"NieR Automata ({self.player_name}): chapter_shuffle only supports goal ending_a or "
                             f"ending_b for now, it is turned off.")
             self.options.chapter_shuffle.value = 0
-        # Chapter shuffle: the starting chapter is given at the start, the others are in the pool
-        self.start_chapter = self.random.choice(START_CHAPTERS) if self.options.chapter_shuffle else None
+        # Chapter shuffle: the starting chapter is given at the start, the others are in the pool. Universal
+        # Tracker reuses the seed's one (a new random pick would give the tracker another starting chapter).
+        if not self.options.chapter_shuffle:
+            self.start_chapter = None
+        elif slot_data is not None and slot_data.get("start_chapter") in START_CHAPTERS:
+            self.start_chapter = slot_data["start_chapter"]
+        else:
+            self.start_chapter = self.random.choice(START_CHAPTERS)
         if self.start_chapter:
             self.multiworld.push_precollected(self.create_item(CHAPTER_NAMES[self.start_chapter]))
+
+    def create_item(self, name: str) -> NieRItem:
+        item_data = item_table[name]
+        return NieRItem(name, item_data.classification, item_data.code, self.player)
 
     def create_items(self) -> None:
         itempool: List[NieRItem] = []
@@ -124,5 +144,7 @@ class NieRAutomataWorld(World):
             "death_link": self.options.death_link.value,
             "chapter_shuffle": self.options.chapter_shuffle.value,
             "start_chapter": self.start_chapter or 0,
+            # Every option, for Universal Tracker
+            "options": self.options.as_dict("goal", "chapter_shuffle", "quest_progression", "death_link"),
             "version": "0.2.0"
         }
