@@ -23,7 +23,9 @@ fishing, shops…) send items to the other players.
 
 ## What you need
 
-- **NieR: Automata on Steam**, up to date. Other versions (Game Pass / Microsoft Store) are not supported.
+- **NieR: Automata on Steam**: the 2021 exe and the update of November 2026 are both supported. Other versions
+  (Game Pass / Microsoft Store, or a future Steam update) are not: the hook then shows a warning and stays off
+  instead of crashing the game.
 - **Windows**.
 - **[Python 3](https://www.python.org/downloads/)** (3.10 or newer). During the install, tick
   *"Add python.exe to PATH"*.
@@ -57,7 +59,11 @@ Download `NieR-Automata-Archipelago-<version>.zip` from the
 3. In game, press **F1** (or **Insert**) to open the Archipelago menu. Enter the server (`host:port`), your
    slot name and the password if there is one, then click *SE CONNECTER A ARCHIPELAGO*.
    You can also connect from the bridge window: `ap_connect archipelago.gg:38281 YourName [password]`.
-4. **Start a new game on an empty save slot** (recommended). Received items show up as notifications.
+4. **Start a new game on an empty save slot.** Received items show up as notifications.
+   A save already played for more than 2 hours when you first connect (a finished game, for example) keeps
+   working, but what it already holds (endings, quests, access points, levels…) doesn't count for the seed.
+   Otherwise a finished save would send Ending E and complete your goal at once. If you really started that
+   save for this seed and played it offline first, type `trust_save <slot 1-3>` in the bridge window.
 
 | Key | What it does |
 |---|---|
@@ -81,9 +87,30 @@ kept and the checks are sent when you reconnect.
 - **World chips**: plug-in chips found on the ground or in chests are disabled; chips come from the
   multiworld.
 - **Fishing**: the first catch of each fish species is a check. Fish are also in the item pool.
+- **Chapter shuffle** (option): the 10 chapters of routes A/B are items. You start with one random chapter:
+  start it from the title screen's **Chapter Select**. The Chapter Select lists the first part of each chapter you
+  received (and the parts you already reached); when the story runs into a chapter you haven't received, you are
+  sent back to the title screen. Each area of the world counts as reachable only with a chapter whose story goes
+  there. Starting a chapter presets the story before it (side quests done, access points on), so with this
+  option side quests and access points only hold filler.
 - **DeathLink** (option): when you die, the other DeathLink players die, and the other way around.
 
-### Checks (259 locations)
+### Checks (up to 259 locations)
+
+Your `goal` decides which checks are in the seed: only the ones you can do before that ending.
+
+| Goal | Routes played | Checks | Characters in the pool |
+|---|---|---|---|
+| `ending_a` | A | 211 | none |
+| `ending_b` | A, B | 216 | 9S |
+| `ending_c` | A, B, C (choose A2) | 256 | 9S, A2 |
+| `ending_d` | A, B, C/D (choose 9S) | 257 | 9S, A2 |
+| `ending_e` | A, B, C, D | 259 | 9S, A2 |
+| `prologue_engels` | test goal | 259 | 9S, A2 |
+
+Side quests that only open in a later route (route B for 9S-only quests, routes C/D for A2 quests) are
+counted in that route. A few quests whose route isn't confirmed yet are counted in route C to be safe.
+
 
 | Kind | What sends it |
 |---|---|
@@ -106,7 +133,8 @@ See `NieR Automata.yaml` for an example.
 
 | Option | Values | What it does |
 |---|---|---|
-| `goal` | `prologue_engels`, `ending_a`, `ending_e` | Beat Engels (end of the prologue), get Ending A, or get Ending E |
+| `goal` | `ending_a` (default), `ending_b`, `ending_c`, `ending_d`, `ending_e`, `prologue_engels` | The ending that completes your game. Only the checks you can do before it are in the seed (see below) |
+| `chapter_shuffle` | `true` / `false` | Chapters are items, played in a random order (see below). Goal `ending_a` or `ending_b` only for now |
 | `quest_progression` | `true` / `false` | Let side quests hold progression items (only quests verified in a real save) |
 | `death_link` | `true` / `false` | DeathLink |
 
@@ -117,6 +145,8 @@ See `NieR Automata.yaml` for an example.
 - Some leveled plug-in chips may show a wrong name in notifications.
 - If a check doesn't fire, the host can send it from the server console with `/send_location`.
 - Sending you back to the title screen when you enter a locked route is not tested in a real run yet.
+- Chapter shuffle is new and not tested in a real run yet: starting a chapter from the Chapter Select on a brand
+  new save slot, and the chapter lock, still need to be checked in game. Routes C/D (chapters 11-17) come later.
 
 ## Uninstalling
 
@@ -136,6 +166,10 @@ python tools/make_release.py 0.1.0-prebeta
 
 `build.bat` calls `vcvars64.bat` from Visual Studio 2026 Community; adjust the path if yours differs.
 `deploy.ps1` builds and copies the files to the default Steam folder.
+
+After a game update, the hook's fixed addresses move. `tools/port_offsets.py <old exe> <new exe>` finds them in
+the new build (`tools/port_verify.py` checks the small functions and return addresses); add the new values to
+`ApplyGameBuildOffsets()` in `dllmain.cpp`, keyed by the exe's PE timestamp.
 
 | Part | What it does |
 |---|---|

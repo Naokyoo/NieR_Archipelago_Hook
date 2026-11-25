@@ -397,6 +397,16 @@
     "92008038": "Tire",
     "92008039": "Gas Cylinder",
     "92008040": "Battery",
-    "92008041": "Broken Firearm"
+    "92008041": "Broken Firearm",
+    "92005101": "Chapter 1: Abandoned Factory",
+    "92005102": "Chapter 2: City Ruins",
+    "92005103": "Chapter 3: Desert",
+    "92005104": "Chapter 4: Amusement Park",
+    "92005105": "Chapter 5: Pascal's Village",
+    "92005106": "Chapter 6: Forest Castle",
+    "92005107": "Chapter 7: Flooded City",
+    "92005108": "Chapter 8: Copied City",
+    "92005109": "Chapter 9: Factory Cult",
+    "92005110": "Chapter 10: Eve"
   }
 }

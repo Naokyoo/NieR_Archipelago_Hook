@@ -109,6 +109,35 @@ def save_received_state(state):
     except Exception as e:
         print(f"[-] Could not persist received-items state: {e}")
 
+# -------------------------------------------------------------
+# Save progress made before the seed (per seed and save slot)
+# -------------------------------------------------------------
+# Everything a save already holds when a seed starts with it must not count for that seed: a finished save
+# (even replayed in route A from the Chapter Select) has every ending bit set and would send Ending E on
+# connection, completing the goal at once. The first time the bridge reads a save slot while connected to a
+# seed, a young save (playtime < SAVE_TRUST_PLAYTIME) is trusted; an older one gets a baseline of the checks it
+# already holds, which are never sent for this seed. A New Game on the slot trusts it again ('trust_save'
+# forces it, e.g. after playing a new save offline for hours before the first connection).
+SAVE_BASELINE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ap_save_baselines.json")
+SAVE_TRUST_PLAYTIME = 2 * 3600  # seconds (playtime is a uint32 at SlotData 0x24)
+
+def load_save_baselines():
+    try:
+        with open(SAVE_BASELINE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+def save_save_baselines(data):
+    try:
+        tmp = SAVE_BASELINE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp, SAVE_BASELINE_FILE)
+    except Exception as e:
+        print(f"[-] Could not persist save baselines: {e}")
+
 # Gold bundle item IDs -> gold amount
 GOLD_BUNDLE_AMOUNTS = {4001: 1000, 4002: 2500, 4003: 5000, 4004: 10000}
 
@@ -116,13 +145,18 @@ GOLD_BUNDLE_AMOUNTS = {4001: 1000, 4002: 2500, 4003: 5000, 4004: 10000}
 # "9S" opens route B (and 9S in the Chapter Select), "A2" routes C and D. 5003 = the old "Route D Key" (old seeds).
 CHARACTER_ITEMS = {5001: ("9S", ("B",)), 5002: ("A2", ("C", "D")), 5003: ("Route D Key", ("D",))}
 
+# Chapters (apworld Items.py, option chapter_shuffle): item 5100 + chapter. The hook only lists received chapters
+# in the Chapter Select and sends the player back to the title screen when the story enters another one.
+CHAPTER_ITEM_OFFSET = 5100
+CHAPTER_ITEMS = {CHAPTER_ITEM_OFFSET + ch: ch for ch in range(1, 18)}
+
 def is_idempotent_item(nier_id):
     """Pod programs (2001..2024), the logic-only Hacking Module (2100) and the characters: single-ownership
     items, safe to re-send. Plug-in chips are counted like stackable items (a player can own several copies).
     Weapons are handled by is_weapon_id."""
     try:
         nid = int(nier_id)
-        return (2001 <= nid <= 2024) or nid == 2100 or nid in CHARACTER_ITEMS
+        return (2001 <= nid <= 2024) or nid == 2100 or nid in CHARACTER_ITEMS or nid in CHAPTER_ITEMS
     except Exception:
         return False
 
@@ -326,14 +360,59 @@ STORY_MILESTONES = [
     (AP_BASE_ID + 519, "Story D: Tower Finale", ("340_D_", "345_D_")),
 ]
 
-def story_milestones_for(phase):
-    return [(loc_id, name) for loc_id, name, prefixes in STORY_MILESTONES if phase.startswith(prefixes)]
+# Main story beats in the order every playthrough of the route goes through them. Reaching one means every
+# earlier one was reached too, so a sub-phase the hook missed (cutscene, game or bridge closed, short sub-phase)
+# is caught up by the next milestone. Order: real route A run (phase_log 2026-10-17/18: 40 camp, 51 desert,
+# 56-58 Adam, 70-79 park, 80 Pascal, then phase 512: 10 alien ship, 15, 60 forest, 90, 100, 120/130, Eve last),
+# confirmed by the game's chapter table (tools/chapter_table.json, dumped 2026-11-25).
+# Route C/D follows the chapter table too (chapters 11 to 17, every sub-chapter is played in order): the 9S
+# forest castle (chapter 13, 160_00) comes before A2's desert (chapter 14, 100-120) although its number is higher.
+STORY_CHAINS = [
+    [AP_BASE_ID + off for off in (500, 501, 63, 502, 91, 83, 503, 31, 504, 505, 506, 172, 507, 508)],  # A/B
+    [AP_BASE_ID + off for off in (509, 510, 511, 514, 512, 513, 515, 516, 517, 518, 519)],              # C/D
+]
+STORY_NAMES = {loc_id: name for loc_id, name, _ in STORY_MILESTONES}
+assert all(loc_id in STORY_NAMES for chain in STORY_CHAINS for loc_id in chain)
+
+# Phase block (phase id sent by the hook) of each milestone: the same sub-phase name can exist in two blocks
+# ("80_00_AB_Pascal_Village" starts chapter 5 in block 256 and chapter 7 in block 512; without the block, starting
+# chapter 7 would count as Beauvoir defeated). From the chapter table (tools/chapter_table.json).
+STORY_PHASE_BLOCKS = {AP_BASE_ID + off: 256 for off in (500, 501, 63, 502, 91, 83, 503)}
+STORY_PHASE_BLOCKS.update({AP_BASE_ID + off: 512 for off in (31, 504, 505, 506, 172, 507, 508)})
+STORY_PHASE_BLOCKS.update({AP_BASE_ID + off: 768 for off in range(509, 520)})
+
+# Arrival milestones ("Reach ..."): starting the chapter from the Chapter Select is arriving there, they count.
+# The others are bosses detected by the phase AFTER the fight, which is sometimes the start of the next chapter
+# (80_00_AB Pascal's village after Beauvoir, 100_A after the giant machine, 130_00_A after Adam): with
+# chapter_shuffle they only count when that phase was reached by playing, not straight from the title screen.
+STORY_ARRIVALS = {AP_BASE_ID + off for off in (500, 501, 502, 503, 504, 509)}
+TITLE_PHASES = ("", "START", "SIGNIN")
+
+def story_milestones_for(phase, phase_id=None, chain=True):
+    """Story milestones reached at this phase: the ones it matches (in its phase block when the id is known) and,
+    with chain, every earlier one of their chain (not with chapter_shuffle: chapters are played in any order)."""
+    reached = []
+    for loc_id, name, prefixes in STORY_MILESTONES:
+        if not phase.startswith(prefixes):
+            continue
+        block = STORY_PHASE_BLOCKS.get(loc_id)
+        if phase_id is not None and block is not None and phase_id != block:
+            continue
+        if chain:
+            for story_chain in STORY_CHAINS:
+                if loc_id in story_chain:
+                    reached += [(earlier, STORY_NAMES[earlier]) for earlier in story_chain[:story_chain.index(loc_id)]]
+        reached.append((loc_id, name))
+    return list(dict.fromkeys(reached))  # no duplicates, story order kept
 
 # Goal option (apworld Options.Goal) -> location whose check completes the seed
 GOAL_LOCATIONS = {
     0: AP_BASE_ID + 6,    # prologue_engels: Factory: Engels Defeated
     1: AP_BASE_ID + 350,  # ending_a: Ending A
     2: AP_BASE_ID + 354,  # ending_e: Ending E
+    3: AP_BASE_ID + 351,  # ending_b: Ending B
+    4: AP_BASE_ID + 352,  # ending_c: Ending C
+    5: AP_BASE_ID + 353,  # ending_d: Ending D
 }
 
 # Fishing: one location per species, id = AP_BASE_ID + item id (8001..8041)
@@ -483,6 +562,8 @@ class SaveDataWatcher:
         self._slot_name_cache = {}
         self.quest_baseline = None      # quest ids already finished when the bridge started
         self.discovered_quests = set()  # quest ids finished (and logged) during this session
+        self.preexisting = {}           # (seed key, slot index) -> location ids held by the save before the seed
+        self.active_slot_idx = None     # slot index of the save data read last
         self.thread = threading.Thread(target=self._watch_loop, daemon=True)
         self.thread.start()
 
@@ -649,6 +730,111 @@ class SaveDataWatcher:
         print("    'slot auto' -> Auto-detect active slot dynamically")
         print("=========================================================\n")
 
+    def save_implied_checks(self, data):
+        """Location ids a save's content stands for (endings, terminals, quests, bosses, storage, fish, levels,
+        story phase): what the watcher and the sync would send for it."""
+        ids = set()
+        if len(data) < 0x80:
+            return ids
+        mask = struct.unpack('<I', data[0x30:0x34])[0]
+        ids |= {loc_id for bit, (loc_id, _) in ENDING_BIT_MAP.items() if mask & (1 << bit)}
+        ascii_blob = data[0x7c:min(len(data), 0x30000)].split(b'\x00')[0].decode('latin1', errors='ignore')
+        flags_match = re.search(r'\nFlags\n(.*?)(?:\n[A-Za-z0-9_]+/\w+|\nSceneState|\n[A-Z][a-z]+|\Z)', ascii_blob, re.DOTALL)
+        unlocked_flags = set(flags_match.group(1).split()) if flags_match else set()
+        ids |= {loc_id for flag, (loc_id, _) in TERMINAL_MAP.items() if flag in unlocked_flags}
+        done_quests = completed_quests(ascii_blob)
+        ids |= {loc_id for q, (loc_id, _) in QUEST_MAP.items() if q in done_quests}
+        ids |= {loc_id for token, (loc_id, _) in BOSS_MAP.items() if token in ascii_blob}
+        if len(data) >= STORAGE_UPGRADES_OFFSET + 4:
+            chip_cap = struct.unpack('<I', data[STORAGE_UPGRADES_OFFSET:STORAGE_UPGRADES_OFFSET + 4])[0]
+            if chip_cap <= len(STORAGE_CAPACITY_CHECKS):
+                ids |= {loc_id for min_cap, loc_id, _ in STORAGE_CAPACITY_CHECKS if chip_cap >= min_cap}
+        if len(data) >= SAVE_INVENTORY_OFFSET + 256 * 12:
+            received_fish = {entry[0] for entry in self.bridge.ap_client.received_items_history
+                             if entry and entry[0] in FISH_ITEM_IDS}
+            for i in range(256):
+                item_id, _, qty = struct.unpack_from('<iIi', data, SAVE_INVENTORY_OFFSET + i * 12)
+                if qty > 0 and item_id in FISH_ITEM_IDS and item_id not in received_fish:
+                    ids.add(AP_BASE_ID + item_id)
+        if len(data) >= SAVE_XP_OFFSET + 4:
+            level = level_from_xp(struct.unpack_from('<i', data, SAVE_XP_OFFSET)[0])
+            ids |= {LEVEL_LOCATION_BASE + lv for lv in LEVEL_MILESTONES if lv <= level}
+        if len(data) >= 0x395F4 + 64:
+            phase = data[0x395F4:0x395F4 + 64].split(b'\x00')[0].decode('latin1', errors='ignore')
+            if phase:
+                ids |= {loc_id for loc_id, _ in story_milestones_for(phase)}
+        return ids
+
+    def ensure_save_baseline(self, data, slot_idx):
+        """First read of this save slot in this seed: trust a young save, otherwise record what it already holds
+        (see SAVE_TRUST_PLAYTIME)."""
+        if slot_idx is None:
+            return
+        self.active_slot_idx = slot_idx
+        ap = self.bridge.ap_client
+        if not ap.connected or not ap.seed_name or len(data) < 0x80:
+            return
+        key = ap._state_key()
+        if (key, slot_idx) in self.preexisting:
+            return
+        baselines = load_save_baselines()
+        entry = baselines.get(key, {}).get(str(slot_idx))
+        if entry is None:
+            playtime = struct.unpack('<I', data[0x24:0x28])[0]
+            if playtime < SAVE_TRUST_PLAYTIME:
+                entry = {"trusted": True, "playtime": playtime}
+            else:
+                held = self.save_implied_checks(data)
+                entry = {"trusted": False, "playtime": playtime, "locations": sorted(held)}
+                # Only warn when it blocks something: a seed already played with an older bridge has sent
+                # what its save holds, so nothing is lost there.
+                blocked = held & ap.missing_locations
+                if blocked:
+                    endings = "".join(sorted(name.split()[1].rstrip(':') for loc_id, name in ENDING_BIT_MAP.values()
+                                             if loc_id in blocked))
+                    print(f"\n⚠️  [SAVE] Slot {slot_idx + 1} was already played before this seed "
+                          f"({playtime // 3600} h, endings: {endings or 'none'}): its {len(blocked)} existing check(s) "
+                          f"won't be sent. Start a New Game on an empty slot for this seed "
+                          f"('trust_save {slot_idx + 1}' if this save really was started for this seed).\n> ", end="", flush=True)
+                    self.bridge.send_command({"cmd": "notify", "title": "SAVE DEJA JOUEE",
+                                              "text": "Progression d'avant ce seed ignoree: lancez une Nouvelle Partie"})
+            baselines.setdefault(key, {})[str(slot_idx)] = entry
+            save_save_baselines(baselines)
+        self.preexisting[(key, slot_idx)] = set() if entry.get("trusted") else set(entry.get("locations", []))
+
+    def trust_slot(self, slot_idx, reason="New Game"):
+        """Everything this save slot holds from now on counts for the current seed."""
+        ap = self.bridge.ap_client
+        if slot_idx is None or not ap.connected or not ap.seed_name:
+            return
+        key = ap._state_key()
+        baselines = load_save_baselines()
+        was_trusted = baselines.get(key, {}).get(str(slot_idx), {}).get("trusted", True)
+        baselines.setdefault(key, {})[str(slot_idx)] = {"trusted": True, "reason": reason}
+        save_save_baselines(baselines)
+        self.preexisting[(key, slot_idx)] = set()
+        if not was_trusted:
+            print(f"\n✅ [SAVE] Slot {slot_idx + 1} now counts for this seed ({reason}).\n> ", end="", flush=True)
+
+    def preexisting_checks(self):
+        """Location ids the active save held before this seed (never sent)."""
+        ap = self.bridge.ap_client
+        if not ap.connected:
+            return set()
+        if self.active_slot_idx is None:
+            active = self.get_active_filepath()
+            data = read_file_shared(active) if active else None
+            if data:
+                self.ensure_save_baseline(data, self.slot_index_of(active))
+        return self.preexisting.get((ap._state_key(), self.active_slot_idx), set())
+
+    @staticmethod
+    def slot_index_of(filepath):
+        try:
+            return int(os.path.basename(filepath).replace("SlotData_", "").replace(".dat", ""))
+        except (TypeError, ValueError):
+            return None
+
     def scan_saves(self, force_report=False):
         # When connected to the live game hook, RAM snapshots are the single source of truth.
         # Disk files are only updated on manual save at access points, so reading them while
@@ -686,7 +872,7 @@ class SaveDataWatcher:
         slot_idx = int(slot_name.replace("SlotData_", "").replace(".dat", ""))
         player_name = self.get_slot_player_name(data)
         slot_label = f"Slot {slot_idx + 1}: {slot_name} ('{player_name}')"
-        self._parse_data(data, slot_label)
+        self._parse_data(data, slot_label, slot_idx)
 
 
     def parse_live_snapshot(self, msg):
@@ -740,13 +926,14 @@ class SaveDataWatcher:
                 self.set_slot(matched + 1)
 
         slot_label = f"LIVE GAME: Slot {self.target_slot + 1} ('{player_name}')" if self.target_slot is not None else f"LIVE GAME ('{player_name}')"
-        self._parse_data(bytes(data), slot_label)
+        slot_idx = self.target_slot if self.target_slot is not None else self.slot_index_of(self.get_active_filepath())
+        self._parse_data(bytes(data), slot_label, slot_idx)
 
-    def _parse_data(self, data, slot_label):
+    def _parse_data(self, data, slot_label, slot_idx=None):
         with self._parse_lock:
-            self._parse_data_locked(data, slot_label)
+            self._parse_data_locked(data, slot_label, slot_idx)
 
-    def _parse_data_locked(self, data, slot_label):
+    def _parse_data_locked(self, data, slot_label, slot_idx=None):
         # Check if a fresh game was just started on this slot (playtime at offset 0x24 in NieR save data)
         playtime = struct.unpack('<I', data[0x24:0x28])[0] if len(data) >= 0x28 else None
         if playtime is not None:
@@ -758,7 +945,9 @@ class SaveDataWatcher:
                 self.baseline_checks.clear()
                 self.quest_baseline = None
                 self.found_checks.clear()
+                self.trust_slot(slot_idx)
                 self.bridge.reset_run(from_watcher=True)
+        self.ensure_save_baseline(data, slot_idx)
 
         # 1. Endings (offset 0x30, 4-byte bitmask)
         mask = struct.unpack('<I', data[0x30:0x34])[0]
@@ -811,10 +1000,14 @@ class SaveDataWatcher:
                     print(f"    Archipelago Location ID: {loc_id}")
                     self.bridge.send_save_check(loc_id, cname, f"Ending {letter}")
 
+        # chapter_shuffle: access points and quests only hold filler there, and starting a chapter presets some of
+        # them; whether that preset lands in the baseline depended on timing, so they are always sent (the
+        # server ignores the ones already checked)
+        filler_only = self.bridge.ap_client.chapter_shuffle
         for flag, (loc_id, loc_name) in TERMINAL_MAP.items():
             if flag in unlocked_flags:
                 cname = AP_LOCATIONS.get(str(loc_id), loc_name)
-                if loc_id not in self.baseline_checks and loc_id not in self.found_checks:
+                if (filler_only or loc_id not in self.baseline_checks) and loc_id not in self.found_checks:
                     self.found_checks.add(loc_id)
                     print(f"\n=========================================================")
                     print(f" 📡 [SAVE DATA: TERMINAL UNLOCKED ({slot_label})]")
@@ -827,7 +1020,7 @@ class SaveDataWatcher:
         for q_token, (loc_id, loc_name) in QUEST_MAP.items():
             if q_token in done_quests:
                 cname = AP_LOCATIONS.get(str(loc_id), loc_name)
-                if loc_id not in self.baseline_checks and loc_id not in self.found_checks:
+                if (filler_only or loc_id not in self.baseline_checks) and loc_id not in self.found_checks:
                     self.found_checks.add(loc_id)
                     print(f"\n=========================================================")
                     print(f" 📜 [SAVE DATA: QUEST COMPLETED ({slot_label})]")
@@ -898,6 +1091,7 @@ class SaveDataWatcher:
         if len(data) < 0x80:
             return
 
+        self.ensure_save_baseline(data, self.slot_index_of(active_sfile))
         slot_name = os.path.basename(active_sfile)
         player_name = self.get_slot_player_name(data)
         print(f"\n🔄 [SAVE SYNC] Scanning {slot_name} ('{player_name}') for unlocked checks to send to Archipelago...")
@@ -1024,6 +1218,8 @@ class ArchipelagoClient:
         self.goal_location = None  # location whose check completes the goal (from slot_data "goal")
         self.goal_sent = False
         self.death_link = False    # slot_data "death_link"
+        self.chapter_shuffle = False  # slot_data "chapter_shuffle"
+        self.chapter_keys = set()     # chapters received (chapter_shuffle)
 
     def send_death(self):
         """DeathLink: tells every DeathLink player that we died."""
@@ -1147,6 +1343,12 @@ class ArchipelagoClient:
             self.goal_location = GOAL_LOCATIONS.get(packet.get("slot_data", {}).get("goal"))
             self.goal_sent = False
             self.death_link = bool(packet.get("slot_data", {}).get("death_link"))
+            self.chapter_shuffle = bool(packet.get("slot_data", {}).get("chapter_shuffle"))
+            self.chapter_keys = set()  # rebuilt from the received items (the starting chapter included)
+            self.bridge.push_chapter_keys()
+            if self.chapter_shuffle:
+                start = packet.get("slot_data", {}).get("start_chapter", 0)
+                print(f"[*] [CHAPTERS] Chapitres melanges : depart au chapitre {start} (Chapter Select).")
             if self.death_link:
                 await self.ws.send(json.dumps([{"cmd": "ConnectUpdate", "tags": ["AP", "DeathLink"]}]))
                 print("[*] [DEATHLINK] Actif pour ce slot.")
@@ -1372,12 +1574,27 @@ class ArchipelagoClient:
             save_received_state(state)
         print(f"\n✅ [Items] {new_index} item(s) confirmed in the game inventory (saved).\n> ", end="", flush=True)
 
+    def in_seed(self, location_id):
+        """False when connected and the location isn't in this seed (the goal leaves out later routes' checks)."""
+        return (not self.connected or location_id in self.missing_locations
+                or location_id in self.checked_locations)
+
     def send_location_check(self, location_id):
         if not self.connected or not self.ws:
             return False
 
         if location_id in self.checked_locations:
             print(f"[*] Location #{location_id} was already checked on Archipelago.")
+            return True
+
+        if location_id not in self.missing_locations:
+            # Not in this seed (e.g. a route B/C/D check in an ending A seed): nothing to send
+            print(f"[*] Location #{location_id} is not in this seed (goal), ignored.")
+            return True
+
+        if location_id in self.bridge.save_watcher.preexisting_checks():
+            # Held by the save before this seed (checks queued offline included)
+            print(f"[*] Location #{location_id} was already in the save before this seed, ignored.")
             return True
 
         self.checked_locations.add(location_id)
@@ -1444,15 +1661,22 @@ class NieRArchipelagoBridge:
         self.send_command({"cmd": "chapters", "phases": sorted(self.reached_phases)})
         if self.ap_client.connected:
             # Story milestones reached while offline (or before a bridge restart) are sent now
+            shuffle = self.ap_client.chapter_shuffle
             for key in sorted(self.reached_phases):
-                for loc_id, name in story_milestones_for(key.split(":", 1)[-1]):
+                pid, _, phase = key.rpartition(":")
+                pid = int(pid) if pid.lstrip("-").isdigit() else None
+                if shuffle and pid is None:
+                    continue
+                for loc_id, name in story_milestones_for(phase, pid, chain=not shuffle):
+                    if shuffle and loc_id not in STORY_ARRIVALS:
+                        continue  # boss checks: only from the live phase changes (see check_story_phase)
                     if loc_id not in self.ap_client.checked_locations:
                         self.pending_story.setdefault(loc_id, name)
             self.flush_story_milestones()
 
     def remember_phase(self, phase, phase_id):
-        if phase == "START":
-            return
+        if phase in ("START", "SIGNIN") or phase_id == 0xF00:
+            return  # title screen phases, not story
         self._load_chapter_progress()
         key = reached_phase_key(phase, phase_id)
         if key not in self.reached_phases:
@@ -1460,9 +1684,17 @@ class NieRArchipelagoBridge:
             if self.reached_key is not None:
                 save_reached_phases(self.reached_key, self.reached_phases)
 
-    def check_story_phase(self, phase):
-        """Queues the story milestones reached by this phase, then sends them if Archipelago is connected."""
-        for loc_id, name in story_milestones_for(phase):
+    def check_story_phase(self, phase, phase_id=None, played=None):
+        """Queues the story milestones reached by this phase, then sends them if Archipelago is connected.
+        played: the phase was reached by playing (True), straight from the title screen (False), unknown (None)."""
+        shuffle = self.ap_client.chapter_shuffle
+        if shuffle and phase_id is None:
+            return  # chapters in any order: only the hook's phases (with their block) are trusted
+        for loc_id, name in story_milestones_for(phase, phase_id, chain=not shuffle):
+            if shuffle and loc_id not in STORY_ARRIVALS and played is not True:
+                continue  # boss checks: only after the fight, not by starting the next chapter
+            if loc_id in self.ap_client.checked_locations or not self.ap_client.in_seed(loc_id):
+                continue  # already sent (the chain repeats the earlier milestones at every phase)
             if loc_id not in self.pending_story:
                 print(f"\n📖 [STORY] {name} (phase {phase})")
                 self.pending_story[loc_id] = name
@@ -1495,6 +1727,10 @@ class NieRArchipelagoBridge:
 
     def send_save_check(self, loc_id, loc_name, tag="Save Check"):
         """Sends an achievement/milestone check detected in local save data to AP & UI."""
+        if not self.ap_client.in_seed(loc_id):
+            return  # not in this seed (goal): no notification either
+        if int(loc_id) in self.save_watcher.preexisting_checks():
+            return  # already in the save before this seed (SAVE_TRUST_PLAYTIME)
         # 1. Send in-game YoRHa UI overlay notification
         self.send_command({
             "cmd": "sent_check_notify",
@@ -1694,6 +1930,7 @@ class NieRArchipelagoBridge:
                     self.ap_client.last_item_index = 0
                     self.ap_client._deliver(0, len(self.ap_client.received_items_history))
                 if self.ap_client.connected:
+                    self.push_chapter_keys()  # chapter_shuffle state (the hook restarted with the game)
                     self.send_command({"cmd": "items_synced"})
                 self.push_chapter_progress()
 
@@ -1728,6 +1965,9 @@ class NieRArchipelagoBridge:
                     print(f"[*] Suppressing duplicate check event for #{loc_id} ({loc_name})")
                     return
                 self.recent_checks[loc_id] = now
+                if not self.ap_client.in_seed(loc_id):
+                    print(f"[*] {loc_name} (#{loc_id}) is not in this seed (goal), ignored.\n> ", end="", flush=True)
+                    return
 
                 # Resolve clean vanilla item name
                 clean_vanilla = name
@@ -1790,13 +2030,33 @@ class NieRArchipelagoBridge:
             elif event == "death":
                 self.ap_client.send_death()
 
+            elif event == "phase_history":
+                # Every sub-phase the hook saw in this game session, sent when the bridge (re)connects: the
+                # phase changes made while the bridge wasn't connected are caught up here
+                new = 0
+                self._load_chapter_progress()
+                for key in msg.get("phases", []):
+                    phase_id, _, phase = key.rpartition(":")
+                    if not phase or phase in ("START", "SIGNIN"):
+                        continue
+                    pid = int(phase_id) if phase_id.lstrip("-").isdigit() else None
+                    if reached_phase_key(phase, pid) not in self.reached_phases:
+                        new += 1
+                        self.remember_phase(phase, pid)
+                    self.check_story_phase(phase, pid)
+                if new:
+                    print(f"\n🗺️  [PHASE] {new} story phase(s) reached while the bridge was closed, caught up.\n> ", end="", flush=True)
+                    self.push_chapter_progress()
+
             elif event == "phase":
                 phase = msg.get("phase", "")
                 if phase:
                     print(f"\n🗺️  [PHASE] {phase} (route {phase_route(phase)})\n> ", end="", flush=True)
                     log_phase_change(phase, msg.get("phase_id"))
                     self.remember_phase(phase, msg.get("phase_id"))
-                    self.check_story_phase(phase)
+                    prev = msg.get("prev")  # None with an older hook
+                    self.check_story_phase(phase, msg.get("phase_id"),
+                                           played=None if prev is None else prev not in TITLE_PHASES)
 
             elif event == "status":
                 money = msg.get("money", 0)
@@ -1893,6 +2153,12 @@ class NieRArchipelagoBridge:
             print(f"[-] Send failed: {e}")
             return False
 
+    def push_chapter_keys(self):
+        """Tells the hook whether chapters are shuffled and which ones are received."""
+        ap = self.ap_client
+        return self.send_command({"cmd": "chapter_keys", "enabled": bool(ap.chapter_shuffle),
+                                  "chapters": sorted(ap.chapter_keys)})
+
     def push_shop_hints(self):
         """Sends the overlay what every not-yet-bought shop location contains (from LocationScouts)."""
         import unicodedata
@@ -1932,6 +2198,14 @@ class NieRArchipelagoBridge:
         total_count: cumulative amount of this item received from the server (lets the hook merge
         re-sends without counting twice). known_only: the item was already delivered in a previous
         run, the hook only records it (nothing is granted)."""
+        chapter = CHAPTER_ITEMS.get(int(item_id))
+        if chapter:
+            new = chapter not in self.ap_client.chapter_keys
+            self.ap_client.chapter_keys.add(chapter)
+            if notify and new:
+                self.send_command({"cmd": "notify", "title": f"CHAPITRE {chapter} DEBLOQUE",
+                                   "text": f"Disponible dans le Chapter Select ({sender})"})
+            return self.push_chapter_keys()
         character = CHARACTER_ITEMS.get(int(item_id))
         if character:
             char_name, routes = character
@@ -2058,6 +2332,8 @@ Archipelago Commands:
 
 Save & Progression Commands:
   slot [1|2|3|auto]                    - View or set monitored save slot (ex: 'slot 2' for Nao)
+  trust_save <1|2|3>                   - Count everything in this save slot for the current seed (only if
+                                         the save was really started for it: a finished save sends every ending!)
 
 In-Game Testing Commands:
   give <id> [count]                    - Inject item into player's inventory
@@ -2065,6 +2341,7 @@ In-Game Testing Commands:
   give_weapon <id> [lvl 1-4]           - Inject weapon into player's weapon list
                                         (ex: 'give_weapon 1220 4' = Beastlord Lv.4, 'give_weapon 1610 1' = Type-4O Fists)
   intercept <on|off>                   - Toggle Chest Intercept Mode
+  chapters_all <on|off>                - TEST: show every chapter in the Chapter Select (reopen it after)
   status                               - Query in-game Money, EXP, and stats
   ping                                 - Test latency with the DLL hook
   cls / clear                          - Clear screen
@@ -2114,6 +2391,21 @@ def main():
                     bridge.save_watcher.print_slots()
                 else:
                     bridge.save_watcher.set_slot(parts[1])
+
+            elif action == "chapters_all":
+                on = len(parts) < 2 or parts[1].lower() in ("on", "1", "true")
+                bridge.send_command({"cmd": "chapters_all", "on": on})
+                print(f"[*] Chapter Select TEST: {'every chapter shown' if on else 'back to the reached chapters'} "
+                      f"(reopen the Chapter Select).")
+
+            elif action in ["trust_save", "trustsave"]:
+                if len(parts) < 2 or parts[1] not in ("1", "2", "3"):
+                    print("Usage: trust_save <1|2|3>")
+                elif not bridge.ap_client.connected:
+                    print("[-] Connect to Archipelago first (the choice is saved per seed).")
+                else:
+                    bridge.save_watcher.trust_slot(int(parts[1]) - 1, reason="trust_save command")
+                    bridge.save_watcher.sync_all_save_milestones()
 
             elif action in ["ap_connect", "apconnect", "connect"]:
                 if len(parts) < 3:

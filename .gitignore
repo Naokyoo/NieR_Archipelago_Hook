@@ -19,6 +19,7 @@ NieR Save File 100%/
 *.bin
 *.log
 ap_received_state.json
+ap_save_baselines.json
 quest_log.json
 archipelago_collected_nodes.txt
 phase_log.json

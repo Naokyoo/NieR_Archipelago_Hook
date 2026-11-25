@@ -1,0 +1,842 @@
+{
+ "_about": "ChapterData.cha records (Chapter Select list, story order), dumped by the hook from the Steam 2026 exe on 2026-11-25. route: A/B/AB/CD; phase_id: story phase block; start: first sub-phase of the chapter.",
+ "chapters": [
+  {
+   "index": 0,
+   "chapter": 1,
+   "sub": 1,
+   "variant": 1,
+   "route": "A",
+   "phase_id": 256,
+   "start": "00_30_A_RobotM_Prologue_STG1"
+  },
+  {
+   "index": 1,
+   "chapter": 1,
+   "sub": 1,
+   "variant": 2,
+   "route": "B",
+   "phase_id": 256,
+   "start": "00_00_B_RobotM_Pro_RobotBrother"
+  },
+  {
+   "index": 2,
+   "chapter": 1,
+   "sub": 2,
+   "variant": 1,
+   "route": "A",
+   "phase_id": 256,
+   "start": "00_55_A_RobotM_Prologue_EV"
+  },
+  {
+   "index": 3,
+   "chapter": 1,
+   "sub": 2,
+   "variant": 2,
+   "route": "B",
+   "phase_id": 256,
+   "start": "00_80_B_RobotM_Pro_BossArea"
+  },
+  {
+   "index": 4,
+   "chapter": 1,
+   "sub": 2,
+   "variant": 3,
+   "route": "A",
+   "phase_id": 256,
+   "start": "00_80_A_RobotM_Pro_1stArea"
+  },
+  {
+   "index": 5,
+   "chapter": 1,
+   "sub": 2,
+   "variant": 4,
+   "route": "A",
+   "phase_id": 256,
+   "start": "00_95_A_RobotM_Pro_lastArea"
+  },
+  {
+   "index": 6,
+   "chapter": 1,
+   "sub": 3,
+   "variant": 1,
+   "route": "A",
+   "phase_id": 256,
+   "start": "05_10_A_RobotM_ProBoss_phase1"
+  },
+  {
+   "index": 7,
+   "chapter": 1,
+   "sub": 3,
+   "variant": 2,
+   "route": "B",
+   "phase_id": 256,
+   "start": "05_10_B_RobotM_ProBoss_phase1"
+  },
+  {
+   "index": 8,
+   "chapter": 1,
+   "sub": 3,
+   "variant": 3,
+   "route": "A",
+   "phase_id": 256,
+   "start": "05_30_A_RobotM_ProBoss_phase3"
+  },
+  {
+   "index": 9,
+   "chapter": 1,
+   "sub": 4,
+   "variant": 1,
+   "route": "A",
+   "phase_id": 256,
+   "start": "10_A_bunker_Robot_Battle"
+  },
+  {
+   "index": 10,
+   "chapter": 1,
+   "sub": 4,
+   "variant": 2,
+   "route": "B",
+   "phase_id": 256,
+   "start": "13_B_bunker_Setup"
+  },
+  {
+   "index": 11,
+   "chapter": 1,
+   "sub": 5,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "16_AB_bunker_Order"
+  },
+  {
+   "index": 12,
+   "chapter": 2,
+   "sub": 1,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "30_AB_Ruined_City_ForcedLanding"
+  },
+  {
+   "index": 13,
+   "chapter": 2,
+   "sub": 2,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "50_AB_Desert_temple"
+  },
+  {
+   "index": 14,
+   "chapter": 3,
+   "sub": 1,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "51_AB_MainDesert"
+  },
+  {
+   "index": 15,
+   "chapter": 3,
+   "sub": 2,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "51_10_AB_Danchi_EV"
+  },
+  {
+   "index": 16,
+   "chapter": 3,
+   "sub": 3,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "56_AB_Danchi_Boss_EV1"
+  },
+  {
+   "index": 17,
+   "chapter": 3,
+   "sub": 4,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "58_50_AB_Goto_AmusementPark"
+  },
+  {
+   "index": 18,
+   "chapter": 4,
+   "sub": 1,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "70_AB_Amusement_Park"
+  },
+  {
+   "index": 19,
+   "chapter": 4,
+   "sub": 2,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "70_10_AB_Park_Tank"
+  },
+  {
+   "index": 20,
+   "chapter": 4,
+   "sub": 3,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "76_10_AB_Amusement_Park_Boss"
+  },
+  {
+   "index": 21,
+   "chapter": 4,
+   "sub": 4,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "79_50_AB_Goto_Pascal_Village"
+  },
+  {
+   "index": 22,
+   "chapter": 5,
+   "sub": 1,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "80_00_AB_Pascal_Village"
+  },
+  {
+   "index": 23,
+   "chapter": 5,
+   "sub": 2,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 256,
+   "start": "90_00_AB_Ruined_City"
+  },
+  {
+   "index": 24,
+   "chapter": 5,
+   "sub": 3,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "00_AB_Ruined_City"
+  },
+  {
+   "index": 25,
+   "chapter": 5,
+   "sub": 4,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "10_10_AB_Alien_Ship_Start"
+  },
+  {
+   "index": 26,
+   "chapter": 6,
+   "sub": 1,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "20_AB_Bunker"
+  },
+  {
+   "index": 27,
+   "chapter": 6,
+   "sub": 2,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "40_00_AB_ShopM_EmilQuest_Start"
+  },
+  {
+   "index": 28,
+   "chapter": 6,
+   "sub": 3,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "40_70_AB_ShopM_EmilQuest_End"
+  },
+  {
+   "index": 29,
+   "chapter": 6,
+   "sub": 4,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "60_10_AB_Forest_Castle_Castle"
+  },
+  {
+   "index": 30,
+   "chapter": 6,
+   "sub": 5,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "60_20_AB_Forest_Castle_Throne"
+  },
+  {
+   "index": 31,
+   "chapter": 7,
+   "sub": 1,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "80_00_AB_Pascal_Village"
+  },
+  {
+   "index": 32,
+   "chapter": 7,
+   "sub": 2,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "80_20_AB_Submerge_City"
+  },
+  {
+   "index": 33,
+   "chapter": 7,
+   "sub": 3,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "90_AB_Battle_Submerge_City"
+  },
+  {
+   "index": 34,
+   "chapter": 7,
+   "sub": 4,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "94_00_AB_Kaiju_Start_EV"
+  },
+  {
+   "index": 35,
+   "chapter": 8,
+   "sub": 1,
+   "variant": 1,
+   "route": "A",
+   "phase_id": 512,
+   "start": "100_A_Submerge_City_2B"
+  },
+  {
+   "index": 36,
+   "chapter": 8,
+   "sub": 1,
+   "variant": 2,
+   "route": "A",
+   "phase_id": 512,
+   "start": "110_00_A_Copy_City"
+  },
+  {
+   "index": 37,
+   "chapter": 8,
+   "sub": 1,
+   "variant": 3,
+   "route": "B",
+   "phase_id": 512,
+   "start": "110_00_B_Copy_City"
+  },
+  {
+   "index": 38,
+   "chapter": 9,
+   "sub": 1,
+   "variant": 1,
+   "route": "B",
+   "phase_id": 512,
+   "start": "120_AB_Bunker"
+  },
+  {
+   "index": 39,
+   "chapter": 9,
+   "sub": 1,
+   "variant": 2,
+   "route": "A",
+   "phase_id": 512,
+   "start": "130_00_A_Resistance_Camp"
+  },
+  {
+   "index": 40,
+   "chapter": 9,
+   "sub": 1,
+   "variant": 3,
+   "route": "A",
+   "phase_id": 512,
+   "start": "140_00_A_RobotM_CrazyReligion"
+  },
+  {
+   "index": 41,
+   "chapter": 9,
+   "sub": 2,
+   "variant": 1,
+   "route": "B",
+   "phase_id": 512,
+   "start": "140_B_Banker_9S"
+  },
+  {
+   "index": 42,
+   "chapter": 9,
+   "sub": 2,
+   "variant": 2,
+   "route": "A",
+   "phase_id": 512,
+   "start": "140_40_A_RobotM_CR_UnderFactory"
+  },
+  {
+   "index": 43,
+   "chapter": 9,
+   "sub": 2,
+   "variant": 3,
+   "route": "A",
+   "phase_id": 512,
+   "start": "140_80_A_RobotM_CR_UF_BossArea"
+  },
+  {
+   "index": 44,
+   "chapter": 9,
+   "sub": 3,
+   "variant": 1,
+   "route": "A",
+   "phase_id": 512,
+   "start": "140_90_A_RobotM_CR_UF_Exit"
+  },
+  {
+   "index": 45,
+   "chapter": 9,
+   "sub": 3,
+   "variant": 2,
+   "route": "B",
+   "phase_id": 512,
+   "start": "140_90_B_Banker_9S"
+  },
+  {
+   "index": 46,
+   "chapter": 10,
+   "sub": 1,
+   "variant": 1,
+   "route": "B",
+   "phase_id": 512,
+   "start": "150_B_Banker_9S"
+  },
+  {
+   "index": 47,
+   "chapter": 10,
+   "sub": 1,
+   "variant": 2,
+   "route": "A",
+   "phase_id": 512,
+   "start": "160_A_Ruined_City_2B"
+  },
+  {
+   "index": 48,
+   "chapter": 10,
+   "sub": 1,
+   "variant": 3,
+   "route": "A",
+   "phase_id": 512,
+   "start": "170_00_A_Resistance_Camp_2B"
+  },
+  {
+   "index": 49,
+   "chapter": 10,
+   "sub": 1,
+   "variant": 4,
+   "route": "A",
+   "phase_id": 512,
+   "start": "170_30_A_Resistance_Camp_2B"
+  },
+  {
+   "index": 50,
+   "chapter": 10,
+   "sub": 2,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "180_AB_Ruined_Front_Of_Camp"
+  },
+  {
+   "index": 51,
+   "chapter": 10,
+   "sub": 3,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "190_AB_Pascal_Village"
+  },
+  {
+   "index": 52,
+   "chapter": 10,
+   "sub": 4,
+   "variant": 0,
+   "route": "AB",
+   "phase_id": 512,
+   "start": "200_00_AB_Ruined_City_Eve_EV"
+  },
+  {
+   "index": 53,
+   "chapter": 10,
+   "sub": 5,
+   "variant": 1,
+   "route": "A",
+   "phase_id": 512,
+   "start": "200_80_AB_Ruined_City_end"
+  },
+  {
+   "index": 54,
+   "chapter": 10,
+   "sub": 5,
+   "variant": 2,
+   "route": "B",
+   "phase_id": 512,
+   "start": "200_80_AB_Ruined_City_end"
+  },
+  {
+   "index": 55,
+   "chapter": 11,
+   "sub": 1,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "00_10_CD_Bunker_Hangar_2B"
+  },
+  {
+   "index": 56,
+   "chapter": 11,
+   "sub": 2,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "10_CD_Ruined_City_9S"
+  },
+  {
+   "index": 57,
+   "chapter": 11,
+   "sub": 3,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "20_CD_Ruined_City_2B"
+  },
+  {
+   "index": 58,
+   "chapter": 11,
+   "sub": 4,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "26_10_CD_Ruined_City_9S"
+  },
+  {
+   "index": 59,
+   "chapter": 11,
+   "sub": 5,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "30_00_CD_Bunker_2B"
+  },
+  {
+   "index": 60,
+   "chapter": 11,
+   "sub": 6,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "50_CD_Submerge_City_2B"
+  },
+  {
+   "index": 61,
+   "chapter": 11,
+   "sub": 7,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "50_20_CD_Ruined_City_2BDead_9S"
+  },
+  {
+   "index": 62,
+   "chapter": 12,
+   "sub": 1,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "70_00_CD_1_Ruined_City"
+  },
+  {
+   "index": 63,
+   "chapter": 12,
+   "sub": 2,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "80_CD_1_Desert_A2"
+  },
+  {
+   "index": 64,
+   "chapter": 13,
+   "sub": 1,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "140_CD_1_Resistance_Camp_9S"
+  },
+  {
+   "index": 65,
+   "chapter": 13,
+   "sub": 2,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "150_CD_Ruined_City_9S"
+  },
+  {
+   "index": 66,
+   "chapter": 13,
+   "sub": 3,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "160_00_CD_1_Forest_Castle_9S"
+  },
+  {
+   "index": 67,
+   "chapter": 13,
+   "sub": 4,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "160_10_CD_1_Forest_Castle_9S"
+  },
+  {
+   "index": 68,
+   "chapter": 14,
+   "sub": 1,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "90_CD_2_Pascal_Village_A2_SQ"
+  },
+  {
+   "index": 69,
+   "chapter": 14,
+   "sub": 2,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "95_CD_2_Pascal_Village_A2"
+  },
+  {
+   "index": 70,
+   "chapter": 14,
+   "sub": 3,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "100_CD_2_Desert_A2"
+  },
+  {
+   "index": 71,
+   "chapter": 14,
+   "sub": 4,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "110_CD_2_Pascal_Village_A2"
+  },
+  {
+   "index": 72,
+   "chapter": 14,
+   "sub": 5,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "120_00_CD_2_RobotM_Shelter_A2"
+  },
+  {
+   "index": 73,
+   "chapter": 15,
+   "sub": 1,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "180_00_CD_2_Forest_Castle_9S_2"
+  },
+  {
+   "index": 74,
+   "chapter": 15,
+   "sub": 2,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "180_10_CD_2_Submerge_City_9S"
+  },
+  {
+   "index": 75,
+   "chapter": 15,
+   "sub": 3,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "220_10_CD_GotoCamp_Yoroyoro_9S"
+  },
+  {
+   "index": 76,
+   "chapter": 15,
+   "sub": 4,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "220_20_CD_ResiCamp_DeboPopo_HD"
+  },
+  {
+   "index": 77,
+   "chapter": 16,
+   "sub": 1,
+   "variant": 1,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "230_CD_Resistance_Camp_9S"
+  },
+  {
+   "index": 78,
+   "chapter": 16,
+   "sub": 1,
+   "variant": 2,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "200_CD_Robot_Mountain_A2"
+  },
+  {
+   "index": 79,
+   "chapter": 16,
+   "sub": 2,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "240_10_CD_Amusement_Park_9S"
+  },
+  {
+   "index": 80,
+   "chapter": 16,
+   "sub": 3,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "240_50_CD_Amusement_Park_A2"
+  },
+  {
+   "index": 81,
+   "chapter": 17,
+   "sub": 1,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "250_CD_Unknown_9S"
+  },
+  {
+   "index": 82,
+   "chapter": 17,
+   "sub": 2,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "275_CD_Tower_walk_9S"
+  },
+  {
+   "index": 83,
+   "chapter": 17,
+   "sub": 3,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "280_CD_Ruined_City_A2"
+  },
+  {
+   "index": 84,
+   "chapter": 17,
+   "sub": 4,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "290_CD_Tower_A2"
+  },
+  {
+   "index": 85,
+   "chapter": 17,
+   "sub": 5,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "295_CD_Tower_SelfHack_9S"
+  },
+  {
+   "index": 86,
+   "chapter": 17,
+   "sub": 6,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "297_CD_Tower_Library_A2"
+  },
+  {
+   "index": 87,
+   "chapter": 17,
+   "sub": 7,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "300_00_CD_Tower_Elevator_A2"
+  },
+  {
+   "index": 88,
+   "chapter": 17,
+   "sub": 8,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "315_CD_Tower_Unite"
+  },
+  {
+   "index": 89,
+   "chapter": 17,
+   "sub": 9,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "332_CD_Tower_Talk"
+  },
+  {
+   "index": 90,
+   "chapter": 17,
+   "sub": 10,
+   "variant": 1,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "340_C_Tower_9Swin"
+  },
+  {
+   "index": 91,
+   "chapter": 17,
+   "sub": 10,
+   "variant": 2,
+   "route": "CD",
+   "phase_id": 768,
+   "start": "340_D_Tower_A2win"
+  },
+  {
+   "index": 92,
+   "chapter": 17,
+   "sub": 11,
+   "variant": 0,
+   "route": "CD",
+   "phase_id": 3889,
+   "start": "endroll1"
+  }
+ ]
+}

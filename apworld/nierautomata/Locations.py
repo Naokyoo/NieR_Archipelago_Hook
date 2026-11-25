@@ -378,3 +378,92 @@ assert UNVERIFIED_LOCATIONS <= set(location_table)
 EXCLUDED_LOCATIONS = {name for name in location_table
                       if (name not in TRUSTED_LOCATIONS and not name.startswith(TRUSTED_PREFIXES))
                       or name in UNVERIFIED_LOCATIONS}
+
+# =========================================================
+# GOAL: checks that can be done before the chosen ending
+# =========================================================
+# Options.Goal value -> route regions whose checks are in the seed. Every other region is route A
+# (geography of the first playthrough). Prologue (0) is a test goal: every check stays.
+ROUTE_REGIONS = ("Route B", "Route C", "Route D")
+GOAL_ROUTE_REGIONS = {
+    0: ROUTE_REGIONS,                           # prologue_engels
+    1: (),                                      # ending_a
+    3: ("Route B",),                            # ending_b
+    4: ("Route B", "Route C"),                  # ending_c (no route D: 9S's side of the final choice)
+    5: ("Route B", "Route C", "Route D"),       # ending_d
+    2: ROUTE_REGIONS,                           # ending_e
+}
+# Ending D goal: the final choice goes to 9S, so ending C (and ending E, which needs both) are not on the way
+GOAL_EXCLUDED_LOCATIONS = {
+    5: {"Ending C: meaningless [C]ode", "Ending E: the [E]nd of YoRHa"},
+}
+# Options.Goal value -> the ending location that completes the goal (same as GOAL_LOCATIONS in the bridge)
+GOAL_ENDING_LOCATIONS = {
+    1: "Ending A: Flowers for m[A]chines",
+    3: "Ending B: or not to [B]e",
+    4: "Ending C: meaningless [C]ode",
+    5: "Ending D: chil[D]hood's end",
+    2: "Ending E: the [E]nd of YoRHa",
+}
+for _excluded in GOAL_EXCLUDED_LOCATIONS.values():
+    assert _excluded <= set(location_table), _excluded - set(location_table)
+
+
+def locations_for_goal(goal: int) -> Dict[str, LocationData]:
+    """The locations of a seed with this goal: route A plus the routes played before the goal's ending."""
+    regions = GOAL_ROUTE_REGIONS[goal]
+    excluded = GOAL_EXCLUDED_LOCATIONS.get(goal, set())
+    return {name: data for name, data in location_table.items()
+            if (data.region not in ROUTE_REGIONS or data.region in regions) and name not in excluded}
+
+# =========================================================
+# CHAPTER SHUFFLE (option chapter_shuffle, routes A/B)
+# =========================================================
+# Story checks -> the chapter whose play sends them (chapter of the sub-phase that triggers them in the bridge,
+# from the game's chapter table, tools/chapter_table.json). They sit in the "Chapters" region in that mode.
+STORY_CHAPTERS = {
+    "Factory: Goliath Buzzsaw Defeated": 1,
+    "Factory: Engels Defeated (Prologue Complete)": 1,
+    "Ending W: broken [W]ings (Prologue Death)": 1,
+    "Story: Arrive at the Resistance Camp": 2,                 # 40_AB
+    "Story: Reach the Desert": 3,                              # 51_AB
+    "Desert: Adam Battle Reward": 3,                           # 58_50_AB
+    "Story: Reach the Amusement Park": 4,                      # 70_AB
+    "Amusement Park: Golden Machine Tank Defeated": 4,         # 70_20 / 76_AB
+    "Amusement Park: Beauvoir Defeated": 4,                    # 79_50_AB
+    "Story: Reach Pascal's Village": 5,                        # 80_00_AB (phase 256)
+    "City Ruins: Alien Mothership - Adam & Eve Victory": 5,    # 10_30_AB (phase 512)
+    "Story: Reach the Forest Castle": 6,                       # 60_xx_AB
+    "Story: Flooded City Battle": 7,                           # 90_AB
+    # Bosses whose check is the start of the next chapter: it only counts when reached by playing (the bridge
+    # ignores it when that chapter is started from the Chapter Select), so the chapter of the fight is needed
+    "Story: Giant Machine Defeated": 7,                        # fight at the end of chapter 7 -> 100_A
+    "Copied City: Adam Battle (Climax) Victory": 8,            # fight at the end of chapter 8 -> 130_00_A
+    "Story: Underground Factory Boss Defeated": 9,             # 140_90
+    "Story: Eve Defeated": 10,                                 # 200_60 / 200_80
+    "Ending A: Flowers for m[A]chines": 10,
+    "Ending B: or not to [B]e": 10,
+}
+assert set(STORY_CHAPTERS) <= set(location_table), set(STORY_CHAPTERS) - set(location_table)
+# Story checks that don't need a weapon (dying in the prologue)
+STORY_NO_WEAPON = {"Ending W: broken [W]ings (Prologue Death)"}
+
+# Area -> chapters whose story goes there (chapter table sub-phase names), so the area can be explored while
+# playing them. Conservative: an area may be open in more chapters, never fewer.
+REGION_CHAPTERS = {
+    "Abandoned Factory": (1, 9),     # prologue; 140_xx_A_RobotM_CrazyReligion
+    "City Ruins": (2, 5, 10),        # 30_AB forced landing; 90_00/00_AB ruined city; 160_A ruined city
+    "Resistance Camp": (2, 9, 10),   # 40_AB; 130_00_A; 170/180 camp
+    "Desert Zone": (2, 3),           # 50_AB desert temple; chapter 3
+    "Amusement Park": (4,),
+    "Pascal's Village": (5, 7, 10),  # 80_00_AB twice; 190_AB
+    "Forest Kingdom": (6,),
+    "Flooded City": (7, 8),          # 80_20 / 90_AB submerged city; 100_A
+    "Copied City": (8,),
+    "Emil's Residence": (6,),        # 40_xx_AB_ShopM_EmilQuest
+}
+# Starting chapter: one whose areas have checks reachable with no item (chapter 6 areas need a pod program or
+# a weapon to enter)
+START_CHAPTERS = (1, 2, 3, 4, 5, 7, 8, 9, 10)
+# Goals the chapter shuffle supports (Options.Goal values): ending_a, ending_b
+CHAPTER_SHUFFLE_GOALS = (1, 3)

@@ -6,11 +6,21 @@ game: NieR Automata
 description: NieR Automata pre-beta settings
 
 NieR Automata:
-  # When your game is done:
-  #   prologue_engels: beat Engels at the end of the prologue (short run, good for testing)
-  #   ending_a: get Ending A (end of route A)
-  #   ending_e: get Ending E (routes A, B, C and D; needs the 9S and A2 items)
+  # The ending that completes your game. Only the checks you can do before that ending are in your seed:
+  # with ending_a you play route A only (no route B/C/D checks, no 9S or A2 in the item pool).
+  #   ending_a: Ending A, end of route A with 2B (default)
+  #   ending_b: Ending B, end of route B (needs the 9S item)
+  #   ending_c: Ending C, routes C/D and choose A2 at the end (needs 9S and A2)
+  #   ending_d: Ending D, routes C/D and choose 9S at the end (needs 9S and A2)
+  #   ending_e: Ending E, after endings C and D (needs 9S and A2; every check)
+  #   prologue_engels: beat Engels at the end of the prologue (test goal, every check stays in the seed)
   goal: ending_a
+
+  # Chapters are items: you start with one random chapter (play it from the title screen's Chapter Select) and
+  # the others come from the multiworld, in any order. Entering a chapter you haven't received sends you back to
+  # the title screen. Routes A/B only for now (goal ending_a or ending_b; with another goal it is turned off).
+  # Side quests and access points only hold filler with it (starting a chapter presets the story before it).
+  chapter_shuffle: 'false'
 
   # Side quests are always checks. 'true' also lets them hold progression items (only quests whose
   # completion was verified in a real save). Some quests become impossible as the story advances.

@@ -5,6 +5,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <sstream>
@@ -259,18 +260,35 @@ struct NieRChipSlot
 };
 #pragma pack(pop)
 
-// Active Save Data in memory starts at moduleBase + 0x145BF58
-static const uintptr_t SAVE_DATA_BASE_RVA         = 0x145BF58;
+// Every NieRAutomata.exe address below is for the 2021 Steam exe; ApplyGameBuildOffsets() switches them to the
+// running build (they are variables for that reason).
+static uintptr_t PLAYER_ENTITY_PTR_RVA = 0x1020948;  // pointer to the player entity
+static uintptr_t ITEM_MANAGER_RVA      = 0x133B510;
+// Return addresses of ItemManager_AddItem callers (hkItemManager_AddItem tells the item sources apart)
+static uintptr_t RET_SAVE_LOAD         = 0x31DF78;
+static uintptr_t RET_INVENTORY_RESET   = 0x150BED;
+static uintptr_t SAVE_LOAD_RANGE_START = 0x150A00;
+static uintptr_t SAVE_LOAD_RANGE_END   = 0x151200;
+static uintptr_t RET_HACKING_CHEST     = 0x800573;
+static uintptr_t RET_HACKING_CHEST_CALLER = 0x7CA45F;
+static uintptr_t RET_NORMAL_CHEST      = 0x80032D;
+static uintptr_t RET_MOB_DROP          = 0x7DA8AA;
+static uintptr_t RET_GROUND_PICKUP     = 0x898B42;
+static uintptr_t RET_POD_SLOT_INIT     = 0x328840;
+static uintptr_t RET_FISHING           = 0x629000;
+
+// Active Save Data in memory starts at moduleBase + 0x145BF58 (2021 exe)
+static uintptr_t SAVE_DATA_BASE_RVA         = 0x145BF58;
 // Tables below: RAM offset = SlotData_*.dat file offset - 4 (NieRHook sheet + NieREdit, checked on a real save)
-static const uintptr_t MONEY_RVA                  = 0x148C4C0; // saveBase + 0x30568 (file 0x3056C)
-static const uintptr_t INVENTORY_TABLE_START      = 0x148C4C4; // saveBase + 0x3056C (file 0x30570), 256 x 12 bytes
-static const uintptr_t INVENTORY_TABLE_END        = INVENTORY_TABLE_START + 256 * 12;
-static const uintptr_t WEAPONS_OFFSET_START       = 0x148DCC4; // saveBase + 0x31D6C (file 0x31D70), 80 x 20 bytes
-static const uintptr_t WEAPONS_OFFSET_END         = WEAPONS_OFFSET_START + 80 * 20;
-static const uintptr_t POD_PROGRAMS_OFFSET_START  = 0x148E304; // saveBase + 0x323AC (file 0x323B0), 32 x 8 bytes
-static const uintptr_t POD_PROGRAMS_OFFSET_END    = POD_PROGRAMS_OFFSET_START + 32 * 8;
-static const uintptr_t CHIP_TABLE_OFFSET_START    = 0x148E410; // Exact RVA (saveBase + 0x324B8), verified with dump_chips.py: slot starts at base_code
-static const uintptr_t CHIP_TABLE_OFFSET_END      = CHIP_TABLE_OFFSET_START + 300 * 48; // 300 chip slots, other save data follows
+static uintptr_t MONEY_RVA                  = 0x148C4C0; // saveBase + 0x30568 (file 0x3056C)
+static uintptr_t INVENTORY_TABLE_START      = 0x148C4C4; // saveBase + 0x3056C (file 0x30570), 256 x 12 bytes
+static uintptr_t INVENTORY_TABLE_END        = INVENTORY_TABLE_START + 256 * 12;
+static uintptr_t WEAPONS_OFFSET_START       = 0x148DCC4; // saveBase + 0x31D6C (file 0x31D70), 80 x 20 bytes
+static uintptr_t WEAPONS_OFFSET_END         = WEAPONS_OFFSET_START + 80 * 20;
+static uintptr_t POD_PROGRAMS_OFFSET_START  = 0x148E304; // saveBase + 0x323AC (file 0x323B0), 32 x 8 bytes
+static uintptr_t POD_PROGRAMS_OFFSET_END    = POD_PROGRAMS_OFFSET_START + 32 * 8;
+static uintptr_t CHIP_TABLE_OFFSET_START    = 0x148E410; // Exact RVA (saveBase + 0x324B8), verified with dump_chips.py: slot starts at base_code
+static uintptr_t CHIP_TABLE_OFFSET_END      = CHIP_TABLE_OFFSET_START + 300 * 48; // 300 chip slots, other save data follows
 
 bool g_bBlockGroundLoot   = true;  // Blocks vanilla ground pickups & mob drops from filling inventory
 bool g_bEnforceBareFists  = true;  // Removes starter weapons until granted by Archipelago
@@ -1781,7 +1799,7 @@ static int GetPlayerLevel(uintptr_t moduleBase, bool logTable)
 
     __try
     {
-        uintptr_t* pPlayerEntityPtr = (uintptr_t*)(moduleBase + 0x1020948);
+        uintptr_t* pPlayerEntityPtr = (uintptr_t*)(moduleBase + PLAYER_ENTITY_PTR_RVA);
         if (!*pPlayerEntityPtr || IsBadReadPtr((void*)(*pPlayerEntityPtr + 0x2078), 0xAF8)) return 0;
 
         const uintptr_t table = *pPlayerEntityPtr + 0x2078;
@@ -1895,7 +1913,7 @@ static bool ReadPlayerHp(uintptr_t moduleBase, uintptr_t* pEntity, int32_t* pHp,
 {
     __try
     {
-        const uintptr_t entity = *(uintptr_t*)(moduleBase + 0x1020948);
+        const uintptr_t entity = *(uintptr_t*)(moduleBase + PLAYER_ENTITY_PTR_RVA);
         if (!entity || IsBadReadPtr((void*)(entity + PLAYER_HP_OFFSET), 8)) return false;
         *pEntity = entity;
         *pHp = *(int32_t*)(entity + PLAYER_HP_OFFSET);
@@ -1910,7 +1928,7 @@ static bool ReadPlayerHp(uintptr_t moduleBase, uintptr_t* pEntity, int32_t* pHp,
 // switches the player to its "dead" state (vfunc +0x90, state 0x29). During scripted moments that forbid dying
 // (flag 0x4000 at 0x10297F0) it only flags a pending death. Writing the HP alone does not kill: the game puts
 // the player back at 1 HP (seen 2026-10-17).
-static const uintptr_t PLAYER_DIE_FUNC_RVA = 0x4E62F0;
+static uintptr_t PLAYER_DIE_FUNC_RVA = 0x4E62F0;
 static volatile bool g_bDeathLinkKillPending = false;
 
 // Called from the bridge thread: the kill itself runs in the hook loop (ProcessDeathLinkKill)
@@ -1982,16 +2000,16 @@ static void CheckPlayerDeath(uintptr_t moduleBase)
 // Live story sub-phase (e.g. "51_AB_MainDesert"): the phase manager global at 0xF64A90 holds the current phase
 // id, followed by the current sub-phase name at +8 (getters 0x745D40 / 0x12F7A0, used by 0x7A7010). The copy in
 // the save (saveBase + 0x395F0) is only refreshed at checkpoints, so it misses most story steps.
-static const uintptr_t CURRENT_SUBPHASE_NAME_RVA = 0xF64A98;
+static uintptr_t CURRENT_SUBPHASE_NAME_RVA = 0xF64A98;
 
 // Route keys (Archipelago items): routes B, C and D stay locked until their key is received. The route is the
 // first non-numeric token of the live sub-phase ("00_00_B_..." = B, "20_CD_..." = C/D, "340_D_..." = D).
 // Entering a locked route sends the player back to the title screen the way the game does it: phase jump
 // (0x7610D0) of the phase manager (0x102A020) to phase 0xF00 "START".
 static volatile LONG g_routeKeys = 0;  // bit 0 = route B (item "9S"), bits 1-2 = routes C and D (item "A2")
-static const uintptr_t PHASE_MANAGER_RVA     = 0x102A020;
-static const uintptr_t PHASE_JUMP_FUNC_RVA   = 0x7610D0;  // (manager, phase id, phase name)
-static const uintptr_t TITLE_PHASE_NAME_RVA  = 0xCAC904;  // "START"
+static uintptr_t PHASE_MANAGER_RVA     = 0x102A020;
+static uintptr_t PHASE_JUMP_FUNC_RVA   = 0x7610D0;  // (manager, phase id, phase name)
+static uintptr_t TITLE_PHASE_NAME_RVA  = 0xCAC904;  // "START"
 static const int       TITLE_PHASE_ID        = 0xF00;
 
 // -------------------------------------------------------------
@@ -2001,11 +2019,11 @@ static const int       TITLE_PHASE_ID        = 0xF00;
 // bytes in story order: +1 chapter, +2 sub-chapter, +3 variant, +4 route (0 A, 1 B, 2 AB, 3 CD), +0xC phase id,
 // +0xE start sub-phase name). Its two accessors are only used by UIChapterSelectLayout when it fills its list
 // (0x9126F0), so filtering them filters the menu.
-static const uintptr_t CHAPTER_DATA_PTR_RVA     = 0x11EA848;
-static const uintptr_t CHAPTER_COUNT_FUNC_RVA   = 0x7DE510;
-static const uintptr_t CHAPTER_GET_FUNC_RVA     = 0x7DCF10;
-static const uintptr_t TEST_GAME_FLAG_FUNC_RVA  = 0x9CA510;  // flag array at save 0x39514, MSB-first
-static const uintptr_t TITLE_MENU_FLAG_RET_RVA  = 0x9B3D4D;  // title menu shows Chapter Select when flag 5 is set
+static uintptr_t CHAPTER_DATA_PTR_RVA     = 0x11EA848;
+static uintptr_t CHAPTER_COUNT_FUNC_RVA   = 0x7DE510;
+static uintptr_t CHAPTER_GET_FUNC_RVA     = 0x7DCF10;
+static uintptr_t TEST_GAME_FLAG_FUNC_RVA  = 0x9CA510;  // flag array at save 0x39514, MSB-first
+static uintptr_t TITLE_MENU_FLAG_RET_RVA  = 0x9B3D4D;  // title menu shows Chapter Select when flag 5 is set
 static const int       CHAPTER_RECORD_SIZE      = 0x50;
 static const int       CHAPTER_NAME_OFFSET      = 0x0E;
 static const int       CHAPTER_NAME_LEN         = 0x20;
@@ -2016,6 +2034,29 @@ enum { CHAPTER_ROUTE_A = 0, CHAPTER_ROUTE_B = 1, CHAPTER_ROUTE_AB = 2, CHAPTER_R
 static CRITICAL_SECTION g_csChapters;
 static std::set<std::string> g_reachedPhases;
 static std::vector<int> g_visibleChapters;  // record indices shown by the menu
+// Sub-phases seen since the game started, in order: resent to the bridge when it (re)connects (a phase change
+// while the bridge isn't connected would be lost) and kept when the bridge replaces the reached list.
+static std::vector<std::string> g_sessionPhases;
+// Test switch (bridge 'chapters_all on'): the Chapter Select lists every chapter, to check that a chapter far
+// ahead can be started on a fresh run (groundwork for a chapter shuffle option)
+static bool g_chapterDebugAll = false;
+// Chapter shuffle (slot option, bridge "chapter_keys"): chapters are Archipelago items. The Chapter Select lists the
+// first part of each received chapter plus the parts already reached, and entering a chapter that isn't received
+// sends the player back to the title screen (the story would otherwise run on into the next chapters).
+static volatile bool g_chapterShuffle = false;
+static volatile LONG g_chapterKeys = 0;  // bit n = chapter n received
+
+// Story position of a sub-phase name: "51_10_AB_Danchi" -> 5110, "100_A_Submerge" -> 10000, -1 if none
+static int SubPhaseOrder(const char* name)
+{
+    int major = 0, digits = 0;
+    while (isdigit((unsigned char)name[digits])) major = major * 10 + (name[digits++] - '0');
+    if (digits == 0 || name[digits] != '_') return -1;
+    const char* p = name + digits + 1;
+    int minor = 0;
+    if (isdigit((unsigned char)p[0]) && isdigit((unsigned char)p[1]) && p[2] == '_') minor = (p[0] - '0') * 10 + (p[1] - '0');
+    return major * 100 + minor;
+}
 
 typedef int(__fastcall* ChapterCount_t)();
 typedef const uint8_t*(__fastcall* ChapterGet_t)(int index);
@@ -2030,18 +2071,101 @@ static std::string ChapterRecordName(const uint8_t* rec)
     return std::string(name, strnlen(name, CHAPTER_NAME_LEN));
 }
 
+// Chapter (1-10) of a route A/B sub-phase, -1 if unknown. In phase blocks 0x100 and 0x200 the chapter table is in
+// story order with growing sub-phase numbers, so the chapter is the one of the last record starting at or before
+// the sub-phase. (Block 0x300, routes C/D, interleaves 9S and A2 numbers: not handled.)
+static int ChapterOfPhase(int phaseId, const char* phase)
+{
+    if ((phaseId != 0x100 && phaseId != 0x200) || !oChapterCount || !oChapterGet) return -1;
+    const int order = SubPhaseOrder(phase);
+    if (order < 0) return -1;
+    int chapter = -1;
+    const int total = oChapterCount();
+    for (int i = 0; i < total; ++i)
+    {
+        const uint8_t* rec = oChapterGet(i);
+        if (!rec || *(const int16_t*)(rec + 0xC) != phaseId || rec[4] == CHAPTER_ROUTE_CD) continue;
+        const int start = SubPhaseOrder(ChapterRecordName(rec).c_str());
+        if (start >= 0 && start <= order) chapter = rec[1];
+    }
+    return chapter;
+}
+
 static void AddReachedPhase(int phaseId, const char* phase)
 {
     char key[96];
     sprintf_s(key, "%d:%s", phaseId, phase);
     EnterCriticalSection(&g_csChapters);
     g_reachedPhases.insert(key);
+    if (std::find(g_sessionPhases.begin(), g_sessionPhases.end(), key) == g_sessionPhases.end())
+        g_sessionPhases.push_back(key);
     LeaveCriticalSection(&g_csChapters);
+}
+
+// {"event":"phase_history","phases":[...]}: every sub-phase seen in this game session, for the bridge to catch up
+static void SendPhaseHistory()
+{
+    std::string json = "{\"event\":\"phase_history\",\"phases\":[";
+    EnterCriticalSection(&g_csChapters);
+    for (size_t i = 0; i < g_sessionPhases.size(); ++i)
+    {
+        if (i) json += ",";
+        json += "\"" + g_sessionPhases[i] + "\"";
+    }
+    const size_t count = g_sessionPhases.size();
+    LeaveCriticalSection(&g_csChapters);
+    json += "]}";
+    if (count) SendBridgeMessage(json.c_str());
 }
 
 static int __fastcall hkChapterCount()
 {
     const int total = oChapterCount();
+
+    // Chapter table dump, once per game session: index, chapter, sub-chapter, variant, route, phase id, start
+    // sub-phase (the data a chapter item needs)
+    static bool s_tableDumped = false;
+    if (!s_tableDumped)
+    {
+        s_tableDumped = true;
+        for (int i = 0; i < total; ++i)
+        {
+            const uint8_t* rec = oChapterGet(i);
+            if (!rec) continue;
+            LogEventToFile("[CHAPTER_TABLE] %d chapter=%d sub=%d variant=%d route=%d phase=%d start=%s\n",
+                           i, rec[1], rec[2], rec[3], rec[4], *(const int16_t*)(rec + 0xC), ChapterRecordName(rec).c_str());
+        }
+    }
+    if (g_chapterDebugAll)
+    {
+        EnterCriticalSection(&g_csChapters);
+        g_visibleChapters.clear();
+        for (int i = 0; i < total; ++i) g_visibleChapters.push_back(i);
+        LeaveCriticalSection(&g_csChapters);
+        LogEventToFile("[CHAPTER_SELECT] TEST: all %d chapters shown\n", total);
+        return total;
+    }
+    if (g_chapterShuffle)
+    {
+        // Received chapters: their first part, plus the parts already reached (starting a later part directly
+        // would hand out the story checks before it)
+        const LONG keys = g_chapterKeys;
+        EnterCriticalSection(&g_csChapters);
+        g_visibleChapters.clear();
+        for (int i = 0; i < total; ++i)
+        {
+            const uint8_t* rec = oChapterGet(i);
+            if (!rec || rec[4] == CHAPTER_ROUTE_CD || rec[1] > 30 || !(keys & (1L << rec[1]))) continue;
+            char key[96];
+            sprintf_s(key, "%d:%s", *(const int16_t*)(rec + 0xC), ChapterRecordName(rec).c_str());
+            if (rec[2] == 1 || g_reachedPhases.count(key)) g_visibleChapters.push_back(i);
+        }
+        if (g_visibleChapters.empty()) g_visibleChapters.push_back(0);  // items not synced yet: never an empty menu
+        const int shown = (int)g_visibleChapters.size();
+        LeaveCriticalSection(&g_csChapters);
+        LogEventToFile("[CHAPTER_SELECT] chapter shuffle: %d/%d entries shown (chapter keys 0x%lX)\n", shown, total, keys);
+        return shown;
+    }
 
     // Furthest chapter record reached on each route. AB records count for route A unless only route B was played.
     std::vector<int> reachedRecords;
@@ -2108,7 +2232,7 @@ static const uint8_t* __fastcall hkChapterGet(int index)
 // The menu draws 11 rows (9 visible) and wraps around the list: with fewer chapters, rows past the end showed
 // the first chapters again. 0x95CF80(layout, top) refreshes row k with entry (top - 1 + k) modulo the count; the rows
 // that wrapped are hidden (bit 31 of +0x24 = visible, on every UI part of the row) and the list stays at the top.
-static const uintptr_t CHAPTER_ROWS_REFRESH_RVA = 0x95CF80;
+static uintptr_t CHAPTER_ROWS_REFRESH_RVA = 0x95CF80;
 static const int       CHAPTER_ROWS             = 11;
 static const int       CHAPTER_VISIBLE_ROWS     = 9;
 static const int       CHAPTER_ROW_MAX_PARTS    = 256;
@@ -2189,9 +2313,13 @@ static void __fastcall hkChapterRowsRefresh(uint8_t* layout, int top)
 
 // Character played in the selected chapter (0x8A2B00(layout): 0 = 2B, 1 = 9S, 2 = A2, -2 = still choosing), from
 // the record's character mask (+8: 1 = 2B, 2 = 9S, 4 = A2) and the 2B/9S picker. 9S is an Archipelago unlock: until
-// it is received (or while offline), a route A/B chapter picked with 9S starts with 2B (routes C/D are behind A2
-// and need 9S).
-static const uintptr_t CHAPTER_CHARACTER_FUNC_RVA = 0x8A2B00;
+// it is received (or while offline), picking 9S for a route A/B chapter is refused: the menu asks again, as when no
+// character is picked yet (routes C/D are behind A2 and need 9S). It used to start the chapter with 2B instead,
+// but 2B then spawned where the 9S version of the scene starts (in the air for chapter 2) and fell out of the map.
+static uintptr_t CHAPTER_CHARACTER_FUNC_RVA = 0x8A2B00;
+// Return address in the menu's confirm step: on -2 it reopens the character prompt ([layout+0x6088] = 1),
+// otherwise it starts the chapter. The other caller only draws the chapter's portrait.
+static uintptr_t CHAPTER_CHARACTER_CONFIRM_RET = 0x934EAF;
 typedef int(__fastcall* ChapterCharacter_t)(uint8_t* layout);
 static ChapterCharacter_t oChapterCharacter = nullptr;
 
@@ -2199,6 +2327,8 @@ static int __fastcall hkChapterCharacter(uint8_t* layout)
 {
     const int character = oChapterCharacter(layout);
     if (character != 1) return character;
+    // Only the confirm step is refused; drawing the portrait keeps 9S
+    if ((uintptr_t)_ReturnAddress() != (uintptr_t)GetModuleHandle(NULL) + CHAPTER_CHARACTER_CONFIRM_RET) return character;
     // Offline (no Archipelago connection) 9S counts as not received, like the chapters past the run's progress
     if (g_routeKeys & 1)
     {
@@ -2219,10 +2349,10 @@ static int __fastcall hkChapterCharacter(uint8_t* layout)
     if (GetTickCount64() - s_lastNotice > 3000)
     {
         s_lastNotice = GetTickCount64();
-        ArchipelagoUI::AddNotification("9S VERROUILLE", "9S n'est pas encore debloque : le chapitre se lance avec 2B");
-        LogEventToFile("[CHAPTER_SELECT] 9S picked without the 9S item -> 2B\n");
+        ArchipelagoUI::AddNotification("9S VERROUILLE", "9S n'est pas encore debloque : choisis 2B");
+        LogEventToFile("[CHAPTER_SELECT] 9S picked without the 9S item -> refused, character prompt again\n");
     }
-    return 0;
+    return -2;  // "no character picked": the menu asks again
 }
 
 // The title menu's Chapter Select is always there with the mod (the list itself is filtered above)
@@ -2305,12 +2435,50 @@ static void EnforceRouteKeys(uintptr_t moduleBase, const char* phase)
     }
 }
 
+// Chapter shuffle: the story entering a chapter that isn't received -> back to the title screen (like the route lock)
+static void EnforceChapterKeys(uintptr_t moduleBase, int phaseId, const char* phase)
+{
+    static ULONGLONG s_lastBlock = 0;
+    static char s_lastPhase[64] = "";
+    static int s_lastChapter = -1;
+    if (!g_chapterShuffle || !g_bArchipelagoItemsSynced) return;
+    if (strcmp(phase, s_lastPhase) != 0)  // the chapter lookup walks the table: once per sub-phase
+    {
+        strcpy_s(s_lastPhase, phase);
+        s_lastChapter = ChapterOfPhase(phaseId, phase);
+    }
+    const int chapter = s_lastChapter;
+    if (chapter < 1 || chapter > 30 || (g_chapterKeys & (1L << chapter))) return;
+
+    const ULONGLONG now = GetTickCount64();
+    if (now - s_lastBlock < 15000) return;
+    s_lastBlock = now;
+
+    char text[128];
+    sprintf_s(text, "Chapitre %d verrouille : il faut le recevoir via Archipelago", chapter);
+    ArchipelagoUI::AddNotification("CHAPITRE VERROUILLE", text);
+    LogEventToFile("[CHAPTER_LOCK] %s (chapter %d) blocked -> back to title\n", phase, chapter);
+    __try
+    {
+        typedef void(__fastcall* PhaseJump_t)(uintptr_t manager, int phaseId, const char* phaseName);
+        ((PhaseJump_t)(moduleBase + PHASE_JUMP_FUNC_RVA))(moduleBase + PHASE_MANAGER_RVA, TITLE_PHASE_ID,
+                                                          (const char*)(moduleBase + TITLE_PHASE_NAME_RVA));
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        LogEventToFile("[CHAPTER_LOCK] title phase jump crashed\n");
+    }
+}
+
 // Story phase tracking: every change of the current sub-phase is logged and sent to the bridge.
 // Phase names carry the route: "_A_", "_B_", "_AB_", "_CD_", "_D_".
 static void CheckPhaseChange(uintptr_t moduleBase)
 {
     static char s_lastPhase[64] = "";
-    if (!IsPlayerInGame()) return;
+    // The phase is tracked even without a player entity: sub-phases that start and end during a cutscene or a
+    // loading screen (the end of a boss fight, the alien ship...) were missed, and their story checks with them.
+    // Only the route lock (a phase jump to the title) needs the player in game.
+    const bool inGame = IsPlayerInGame();
 
     __try
     {
@@ -2327,17 +2495,25 @@ static void CheckPhaseChange(uintptr_t moduleBase)
         }
         phase[n] = '\0';
         if (n == 0) return;
-        EnforceRouteKeys(moduleBase, phase);
-        if (strcmp(phase, s_lastPhase) == 0) return;
-
         // Sub-phase numbers restart in every phase (block of the story), so the phase id tells them apart
         const int phaseId = *(const int*)(moduleBase + CURRENT_SUBPHASE_NAME_RVA - 8);
-        LogEventToFile("[PHASE] %s -> %s (phase 0x%X)\n", s_lastPhase[0] ? s_lastPhase : "(start)", phase, phaseId);
-        strcpy_s(s_lastPhase, phase);
-        AddReachedPhase(phaseId, phase);
+        if (inGame)
+        {
+            EnforceRouteKeys(moduleBase, phase);
+            EnforceChapterKeys(moduleBase, phaseId, phase);
+        }
+        if (strcmp(phase, s_lastPhase) == 0) return;
 
-        char eventJson[160];
-        sprintf_s(eventJson, "{\"event\":\"phase\",\"phase\":\"%s\",\"phase_id\":%d}", phase, phaseId);
+        LogEventToFile("[PHASE] %s -> %s (phase 0x%X)\n", s_lastPhase[0] ? s_lastPhase : "(start)", phase, phaseId);
+        // "prev": the sub-phase before this one ("" at boot, "START" when coming from the title screen / Chapter
+        // Select): the bridge only counts a boss beaten when the phase after the fight was reached by playing
+        char prev[64];
+        strcpy_s(prev, s_lastPhase);
+        strcpy_s(s_lastPhase, phase);
+        if (phaseId != TITLE_PHASE_ID) AddReachedPhase(phaseId, phase);  // not the title screen ones (SIGNIN, START)
+
+        char eventJson[256];
+        sprintf_s(eventJson, "{\"event\":\"phase\",\"phase\":\"%s\",\"phase_id\":%d,\"prev\":\"%s\"}", phase, phaseId, prev);
         SendBridgeMessage(eventJson);
     }
     __except (EXCEPTION_EXECUTE_HANDLER) {}
@@ -2350,7 +2526,7 @@ bool IsPlayerInGame()
 
     __try
     {
-        uintptr_t* pPlayerEntityPtr = (uintptr_t*)(moduleBase + 0x1020948);
+        uintptr_t* pPlayerEntityPtr = (uintptr_t*)(moduleBase + PLAYER_ENTITY_PTR_RVA);
         if (!pPlayerEntityPtr || !*pPlayerEntityPtr || IsBadReadPtr((void*)*pPlayerEntityPtr, 0x60))
         {
             return false;
@@ -2380,7 +2556,7 @@ bool IsPlayerInCampShopArea()
 
     __try
     {
-        uintptr_t* pPlayerEntityPtr = (uintptr_t*)(moduleBase + 0x1020948);
+        uintptr_t* pPlayerEntityPtr = (uintptr_t*)(moduleBase + PLAYER_ENTITY_PTR_RVA);
         if (!pPlayerEntityPtr || !*pPlayerEntityPtr || IsBadReadPtr((void*)*pPlayerEntityPtr, 0x60))
             return false;
 
@@ -2801,7 +2977,8 @@ static bool hkItemManager_AddItem(void* pThis, int item_id, int iQuantity)
         }
 
         // 2. Ignore save file loading and internal inventory resets (+0x31df78, +0x150bed)
-        bool isSaveLoadCaller = (rva == 0x31df78 || rva == 0x150bed || (rva >= 0x150a00 && rva <= 0x151200));
+        bool isSaveLoadCaller = (rva == RET_SAVE_LOAD || rva == RET_INVENTORY_RESET ||
+                                 (rva >= SAVE_LOAD_RANGE_START && rva <= SAVE_LOAD_RANGE_END));
         if (isSaveLoadCaller)
         {
             SanitizePlayerWeaponsAndHUD();
@@ -2821,7 +2998,7 @@ static bool hkItemManager_AddItem(void* pThis, int item_id, int iQuantity)
         // Capture Player Coordinates (GPS) safely
         float pX = 0.0f, pY = 0.0f, pZ = 0.0f;
         bool hasPos = false;
-        uintptr_t* pPlayerEntityPtr = (uintptr_t*)(moduleBase + 0x1020948);
+        uintptr_t* pPlayerEntityPtr = (uintptr_t*)(moduleBase + PLAYER_ENTITY_PTR_RVA);
         if (pPlayerEntityPtr && *pPlayerEntityPtr && !IsBadReadPtr((void*)*pPlayerEntityPtr, 0x60))
         {
             uintptr_t playerEntity = *pPlayerEntityPtr;
@@ -2832,15 +3009,15 @@ static bool hkItemManager_AddItem(void* pThis, int item_id, int iQuantity)
         }
 
         // Determine source type of this acquisition
-        bool isHackingChest = (rva == 0x800573 || (frameCount > 1 && ((uintptr_t)stackFrames[1] - moduleBase == 0x7ca45f)));
-        bool isNormalChest  = (rva == 0x80032d);
-        bool isMobDrop      = (rva == 0x7da8aa);
-        bool isGroundPickup = (rva == 0x898b42);
+        bool isHackingChest = (rva == RET_HACKING_CHEST || (frameCount > 1 && ((uintptr_t)stackFrames[1] - moduleBase == RET_HACKING_CHEST_CALLER)));
+        bool isNormalChest  = (rva == RET_NORMAL_CHEST);
+        bool isMobDrop      = (rva == RET_MOB_DROP);
+        bool isGroundPickup = (rva == RET_GROUND_PICKUP);
         // Shop pod program purchases must occur when buying from the Resistance Camp merchant
         // Every pod program is a check wherever it comes from: 6 are sold (Camp / Bunker maintenance shops),
         // the others are quest rewards or found in dead pods. R010 Laser (prologue) is checked separately.
         bool isShopPodPurchase = IsPodProgramId(item_id) &&
-                                 (rva != 0x328840) && // Exclude engine pod slot initialization
+                                 (rva != RET_POD_SLOT_INIT) && // Exclude engine pod slot initialization
                                  (item_id != 2001);   // Exclude starter program R010 Laser
 
         bool isWeapon = (item_id >= 1000 && item_id <= 1999);
@@ -2856,7 +3033,7 @@ static bool hkItemManager_AddItem(void* pThis, int item_id, int iQuantity)
         // 0x629000) is a check and the catch is replaced by the Archipelago item. Fish from other sources
         // (Jackass's mackerel for ending K, quest rewards) pass through untouched. While the bridge is not
         // connected the catch is kept, so the bridge can still send its check from the save inventory later.
-        const bool isFishingCatch = (item_id >= 8001 && item_id <= 8041 && rva == 0x629000);
+        const bool isFishingCatch = (item_id >= 8001 && item_id <= 8041 && rva == RET_FISHING);
         if (item_id >= 8001 && item_id <= 8041 && !isFishingCatch)
         {
             return oItemManager_AddItem(pThis, item_id, iQuantity);
@@ -3102,6 +3279,8 @@ static DWORD WINAPI BridgeServerThread(LPVOID lpParam)
 
         // Send handshake
         SendBridgeMessage("{\"event\":\"handshake\",\"game\":\"NieR:Automata\",\"version\":\"0.1.0-prebeta\"}");
+        // Story phases seen while the bridge wasn't connected (their story checks would be lost otherwise)
+        SendPhaseHistory();
 
         // If there was a pending connect request, send it immediately
         EnterCriticalSection(&g_csSocket);
@@ -3143,8 +3322,32 @@ static DWORD WINAPI BridgeServerThread(LPVOID lpParam)
                 if (!line.empty() && line.back() == '\r') line.pop_back();
                 if (line.empty()) continue;
 
+                // 0b. CHAPTER_KEYS: chapter shuffle on/off and the chapters received (replaces the set)
+                if (line.find("\"chapter_keys\"") != std::string::npos)
+                {
+                    g_chapterShuffle = line.find("\"enabled\": true") != std::string::npos ||
+                                       line.find("\"enabled\":true") != std::string::npos;
+                    LONG keys = 0;
+                    const size_t open = line.find('[', line.find("\"chapters\""));
+                    const size_t close = open == std::string::npos ? std::string::npos : line.find(']', open);
+                    for (size_t i = open; open != std::string::npos && close != std::string::npos && i < close; ++i)
+                    {
+                        if (!isdigit((unsigned char)line[i])) continue;
+                        int n = 0;
+                        while (i < close && isdigit((unsigned char)line[i])) n = n * 10 + (line[i++] - '0');
+                        if (n >= 1 && n <= 30) keys |= 1L << n;
+                    }
+                    InterlockedExchange(&g_chapterKeys, keys);
+                    LogEventToFile("[CHAPTER_SELECT] chapter shuffle %s, chapter keys 0x%lX\n", g_chapterShuffle ? "on" : "off", keys);
+                }
+                // 0a. CHAPTERS_ALL: test switch, every chapter in the Chapter Select
+                else if (line.find("\"chapters_all\"") != std::string::npos)
+                {
+                    g_chapterDebugAll = line.find("true") != std::string::npos;  // {"cmd": "chapters_all", "on": true}
+                    LogEventToFile("[CHAPTER_SELECT] TEST all chapters: %s\n", g_chapterDebugAll ? "on" : "off");
+                }
                 // 0. CHAPTERS: every story phase reached in this seed (replaces the list; Chapter Select filter)
-                if (line.find("\"chapters\"") != std::string::npos && line.find("\"phases\"") != std::string::npos)
+                else if (line.find("\"chapters\"") != std::string::npos && line.find("\"phases\"") != std::string::npos)
                 {
                     const size_t open = line.find('[', line.find("\"phases\""));
                     const size_t close = line.find(']', open);
@@ -3160,6 +3363,8 @@ static DWORD WINAPI BridgeServerThread(LPVOID lpParam)
                         g_reachedPhases.insert(line.substr(a + 1, b - a - 1));
                         p = b + 1;
                     }
+                    // Phases played in this game session stay reached even if the bridge didn't get them yet
+                    g_reachedPhases.insert(g_sessionPhases.begin(), g_sessionPhases.end());
                     const size_t count = g_reachedPhases.size();
                     LeaveCriticalSection(&g_csChapters);
                     LogEventToFile("[CHAPTER_SELECT] %zu reached phases received from the bridge\n", count);
@@ -3472,6 +3677,79 @@ static DWORD WINAPI BridgeServerThread(LPVOID lpParam)
     return 0;
 }
 
+// -------------------------------------------------------------
+// Game build: NieRAutomata.exe changed with the Steam update of November 2026 and every hardcoded address moved
+// (a MinHook detour on a stale address crashed the game when opening the Chapter Select). The running build is
+// told by the PE header TimeDateStamp; tools/port_offsets.py maps the 2021 addresses to another build (code
+// matched instruction by instruction, data through the instructions that reference it).
+// -------------------------------------------------------------
+static const DWORD GAME_BUILD_STEAM_2021 = 0x60D3A8D2;  // Steam exe of June 2021 (the addresses above)
+static const DWORD GAME_BUILD_STEAM_2026 = 0x6AC89519;  // Steam update of November 2026 (built 2026-10-09)
+static const char* g_gameBuildName = "unknown";
+
+static bool ApplyGameBuildOffsets()
+{
+    const uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
+    const IMAGE_DOS_HEADER* dos = (const IMAGE_DOS_HEADER*)base;
+    const IMAGE_NT_HEADERS64* nt = (const IMAGE_NT_HEADERS64*)(base + dos->e_lfanew);
+    const DWORD stamp = nt->FileHeader.TimeDateStamp;
+
+    if (stamp == GAME_BUILD_STEAM_2021)
+    {
+        g_gameBuildName = "Steam 2021";
+    }
+    else if (stamp == GAME_BUILD_STEAM_2026)
+    {
+        g_gameBuildName = "Steam 2026";
+        // Save data block: every table inside it moves with it (same save layout)
+        const uintptr_t saveDelta = 0x145C2C8 - SAVE_DATA_BASE_RVA;
+        SAVE_DATA_BASE_RVA += saveDelta;
+        MONEY_RVA += saveDelta;
+        INVENTORY_TABLE_START += saveDelta;      INVENTORY_TABLE_END += saveDelta;
+        WEAPONS_OFFSET_START += saveDelta;       WEAPONS_OFFSET_END += saveDelta;
+        POD_PROGRAMS_OFFSET_START += saveDelta;  POD_PROGRAMS_OFFSET_END += saveDelta;
+        CHIP_TABLE_OFFSET_START += saveDelta;    CHIP_TABLE_OFFSET_END += saveDelta;
+
+        PLAYER_ENTITY_PTR_RVA      = 0x1020C88;
+        ITEM_MANAGER_RVA           = 0x133B890;
+        CURRENT_SUBPHASE_NAME_RVA  = 0xF64AA8;   // phase global 0xF64AA0 + 8
+        PHASE_MANAGER_RVA          = 0x102A360;
+        PHASE_JUMP_FUNC_RVA        = 0x761410;
+        TITLE_PHASE_NAME_RVA       = 0xCA8620;   // "START"
+        PLAYER_DIE_FUNC_RVA        = 0x4E63F0;
+        CHAPTER_DATA_PTR_RVA       = 0x11EABC8;
+        CHAPTER_COUNT_FUNC_RVA     = 0x7DE910;
+        CHAPTER_GET_FUNC_RVA       = 0x7DD310;
+        TEST_GAME_FLAG_FUNC_RVA    = 0x9CAE50;
+        TITLE_MENU_FLAG_RET_RVA    = 0x9B442D;
+        CHAPTER_ROWS_REFRESH_RVA   = 0x95D660;
+        CHAPTER_CHARACTER_FUNC_RVA = 0x8A2F80;
+        CHAPTER_CHARACTER_CONFIRM_RET = 0x93546F;
+
+        RET_SAVE_LOAD            = 0x31E078;
+        RET_INVENTORY_RESET      = 0x150CDD;
+        SAVE_LOAD_RANGE_START    = 0x150AF0;
+        SAVE_LOAD_RANGE_END      = 0x1512F0;
+        RET_HACKING_CHEST        = 0x800993;
+        RET_HACKING_CHEST_CALLER = 0x7CA85F;
+        RET_NORMAL_CHEST         = 0x80074D;
+        RET_MOB_DROP             = 0x7DACAA;
+        RET_GROUND_PICKUP        = 0x898F82;
+        RET_POD_SLOT_INIT        = 0x328940;
+        RET_FISHING              = 0x629100;
+    }
+    else
+    {
+        std::cerr << "[-] Unknown NieRAutomata.exe build (PE timestamp 0x" << std::hex << stamp << std::dec
+                  << "): the Archipelago hook stays OFF so the game doesn't crash.\n";
+        LogEventToFile("[GAME_BUILD] unknown exe build 0x%08X: hook disabled\n", stamp);
+        return false;
+    }
+    std::cout << "[+] Game build: " << g_gameBuildName << "\n";
+    LogEventToFile("[GAME_BUILD] %s (0x%08X)\n", g_gameBuildName, stamp);
+    return true;
+}
+
 static void InitializeGameOffsets()
 {
     std::cout << "[*] Initializing memory pointers and hooks for NieR: Automata...\n";
@@ -3482,7 +3760,7 @@ static void InitializeGameOffsets()
     g_piMoney = (int32_t*)(moduleBase + MONEY_RVA);
     std::cout << "  [+] Money (G) Pointer: 0x" << std::hex << (uintptr_t)g_piMoney << std::dec << "\n";
 
-    g_pItemManager = (void*)(moduleBase + 0x133B510);
+    g_pItemManager = (void*)(moduleBase + ITEM_MANAGER_RVA);
     std::cout << "  [+] Item Catalog Instance: 0x" << std::hex << (uintptr_t)g_pItemManager << std::dec << "\n";
 
     g_piExperience = (int32_t*)FindPatternPtr("8B 15 ? ? ? ? 48 8D 8F ? ? ? ? E8 ? ? ? ? 8B 48 04", 2);
@@ -3568,6 +3846,17 @@ static DWORD WINAPI MainThread(LPVOID lpParam)
         std::cout << "[+] MinHook initialized successfully!\n";
     }
 
+    if (!ApplyGameBuildOffsets())
+    {
+        MessageBoxA(NULL,
+                    "This version of NieRAutomata.exe is not supported by the Archipelago hook yet.\n"
+                    "The hook is disabled for this session (the game runs without Archipelago).\n\n"
+                    "Cette version de NieRAutomata.exe n'est pas encore prise en charge par le hook Archipelago.\n"
+                    "Le hook est desactive pour cette session.",
+                    "NieR: Automata Archipelago", MB_OK | MB_ICONWARNING);
+        return 0;
+    }
+
     InitializeGameOffsets();
 
     // Initialize DirectX 11 ImGui YoRHa Overlay Menu
@@ -3600,7 +3889,7 @@ static DWORD WINAPI MainThread(LPVOID lpParam)
             curPt = GetCurrentPlaytime();
             __try
             {
-                uintptr_t* pEnt = (uintptr_t*)(moduleBase + 0x1020948);
+                uintptr_t* pEnt = (uintptr_t*)(moduleBase + PLAYER_ENTITY_PTR_RVA);
                 if (pEnt && !IsBadReadPtr(pEnt, sizeof(uintptr_t))) curEntity = *pEnt;
             }
             __except (EXCEPTION_EXECUTE_HANDLER) {}

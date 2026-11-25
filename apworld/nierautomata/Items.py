@@ -146,6 +146,25 @@ FISH_ITEM_NAMES = [
 item_table.update({name: ItemData(AP_BASE_ID + 8001 + i, ItemClassification.filler)
                    for i, name in enumerate(FISH_ITEM_NAMES)})
 
+# --- Chapters (Progression, option chapter_shuffle only): the Chapter Select chapters of routes A/B ---
+# Chapter numbers and places from the game's chapter table (tools/chapter_table.json).
+CHAPTER_NAMES = {
+    1: "Chapter 1: Abandoned Factory",
+    2: "Chapter 2: City Ruins",
+    3: "Chapter 3: Desert",
+    4: "Chapter 4: Amusement Park",
+    5: "Chapter 5: Pascal's Village",
+    6: "Chapter 6: Forest Castle",
+    7: "Chapter 7: Flooded City",
+    8: "Chapter 8: Copied City",
+    9: "Chapter 9: Factory Cult",
+    10: "Chapter 10: Eve",
+}
+CHAPTER_ITEM_OFFSET = 5100  # item id = AP_BASE_ID + 5100 + chapter
+item_table.update({name: ItemData(AP_BASE_ID + CHAPTER_ITEM_OFFSET + ch, ItemClassification.progression)
+                   for ch, name in CHAPTER_NAMES.items()})
+CHAPTER_ITEMS = set(CHAPTER_NAMES.values())
+
 # Items placed more than once in the pool (default: 1 copy)
 item_counts: Dict[str, int] = {
     "Progressive Chip Capacity": 6,
