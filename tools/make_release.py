@@ -1,7 +1,7 @@
 """Builds the player release zip: release/NieR-Automata-Archipelago-<version>.zip
 
 Run build.bat first (the zip ships the compiled dinput8.dll).
-    python tools/make_release.py 0.1.0-prebeta
+    python tools/make_release.py 0.2.0-prebeta
 """
 import os
 import sys

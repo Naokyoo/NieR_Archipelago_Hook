@@ -124,5 +124,5 @@ class NieRAutomataWorld(World):
             "death_link": self.options.death_link.value,
             "chapter_shuffle": self.options.chapter_shuffle.value,
             "start_chapter": self.start_chapter or 0,
-            "version": "0.1.0"
+            "version": "0.2.0"
         }

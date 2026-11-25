@@ -2,8 +2,11 @@
 
 An [Archipelago](https://archipelago.gg) multiworld randomizer for **NieR: Automata** (Steam version, Windows).
 
-> **Pre-beta (0.1.0).** It works from start to Ending A in our tests, but expect bugs. Back up your saves
+> **Pre-beta (0.2.0).** It works from start to Ending A in our tests, but expect bugs. Back up your saves
 > and please report anything odd (see [Feedback](#feedback)).
+>
+> **NieR: Automata got a Steam update in November 2026: version 0.1.0 crashes the game with it.** Update to
+> 0.2.0 (see [Updating](#updating)).
 
 2B starts with no weapons and no HUD chips. Weapons, pod programs, HUD chips, chip storage, characters and
 more are shuffled into the multiworld, and the things you do in the game (story, bosses, quests, endings,
@@ -13,6 +16,7 @@ fishing, shops…) send items to the other players.
 
 - [What you need](#what-you-need)
 - [Installing](#installing)
+- [Updating](#updating)
 - [Playing](#playing)
 - [How the randomizer works](#how-the-randomizer-works)
 - [Options](#options)
@@ -49,6 +53,23 @@ Download `NieR-Automata-Archipelago-<version>.zip` from the
    `nierautomata.apworld`, or copy it into Archipelago's `custom_worlds` folder.
 4. **Make your settings file**: edit `NieR Automata.yaml` (your slot name, your goal…) and give it to
    the person who generates the multiworld, like any other Archipelago game.
+
+## Updating
+
+From 0.1.0 (required since the game's Steam update of November 2026):
+
+1. Close the game and the bridge window.
+2. Copy everything from the new zip's `NieRAutomata folder` into the game folder and **replace** the old files
+   (`dinput8.dll` is the one that matters: the old one crashes the updated game).
+3. The person who generates: install the new `nierautomata.apworld` the same way as before, and delete any
+   older `nierautomata.apworld` left in Archipelago's `lib\worlds` or `custom_worlds` folder (two copies make
+   Archipelago print "already registered" errors and may load the old one).
+4. Your saves and the games you already started keep working: nothing to do on that side.
+5. Old settings files still work (the goal stays `ending_a`). The new options are in the zip's
+   `NieR Automata.yaml`.
+
+When the hook starts, its console shows `Game build: Steam 2026` (or `Steam 2021`). If the game gets another
+update the hook doesn't know yet, it shows a warning and stays off instead of crashing the game.
 
 ## Playing
 
@@ -161,7 +182,7 @@ Requirements: Visual Studio with the C++ build tools, Python 3.
 git clone --recursive <repo url>      (or: git submodule update --init)
 python download_imgui.py
 build.bat
-python tools/make_release.py 0.1.0-prebeta
+python tools/make_release.py 0.2.0-prebeta
 ```
 
 `build.bat` calls `vcvars64.bat` from Visual Studio 2026 Community; adjust the path if yours differs.

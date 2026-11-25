@@ -3278,7 +3278,7 @@ static DWORD WINAPI BridgeServerThread(LPVOID lpParam)
         std::cout << "=========================================================\n\n";
 
         // Send handshake
-        SendBridgeMessage("{\"event\":\"handshake\",\"game\":\"NieR:Automata\",\"version\":\"0.1.0-prebeta\"}");
+        SendBridgeMessage("{\"event\":\"handshake\",\"game\":\"NieR:Automata\",\"version\":\"0.2.0-prebeta\"}");
         // Story phases seen while the bridge wasn't connected (their story checks would be lost otherwise)
         SendPhaseHistory();
 
@@ -3827,7 +3827,7 @@ static DWORD WINAPI MainThread(LPVOID lpParam)
     OpenConsole();
 
     std::cout << "=========================================================\n";
-    std::cout << "  NieR: Automata - Archipelago MultiWorld Hook v0.1.0-prebeta\n";
+    std::cout << "  NieR: Automata - Archipelago MultiWorld Hook v0.2.0-prebeta\n";
     std::cout << "  [Location Checks & TCP Bridge Server on Port 52140]    \n";
     std::cout << "=========================================================\n";
 
